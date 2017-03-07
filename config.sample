@@ -1,0 +1,3 @@
+NYCT.gtfsPath=
+NYCT.key=
+tripUpdates.url=http://localhost:8001/tripUpdates
