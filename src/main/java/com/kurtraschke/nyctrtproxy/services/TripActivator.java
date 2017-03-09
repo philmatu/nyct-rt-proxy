@@ -11,6 +11,7 @@ import org.onebusaway.gtfs.model.calendar.CalendarServiceData;
 import org.onebusaway.gtfs.model.calendar.ServiceDate;
 import org.onebusaway.gtfs.services.GtfsRelationalDao;
 
+import com.google.common.collect.ImmutableSet;
 import com.kurtraschke.nyctrtproxy.model.ActivatedTrip;
 import com.vividsolutions.jts.index.strtree.SIRtree;
 
@@ -94,7 +95,7 @@ public class TripActivator {
             .getAsInt() / 86400.0);
   }
 
-  public Stream<ActivatedTrip> getTripsForRangeAndRoute(Date start, Date end, String routeId) {
+  public Stream<ActivatedTrip> getTripsForRangeAndRoutes(Date start, Date end, Set<String> routeIds) {
     ServiceDate startDate = new ServiceDate(start);
 
     return Stream.iterate(startDate, ServiceDate::previous)
@@ -111,11 +112,15 @@ public class TripActivator {
                       .map(Trip.class::cast);
 
               return tripsStream
-                      .filter(t -> t.getRoute().getId().getId().equals(routeId))
+                      .filter(t -> routeIds.contains(t.getRoute().getId().getId()))
                       .filter(t -> serviceIdsForDate.contains(t.getServiceId()))
                       .map(t -> new ActivatedTrip(sd, t));
             });
 
+  }
+
+  public Stream<ActivatedTrip> getTripsForRangeAndRoute(Date start, Date end, String routeId) {
+    return getTripsForRangeAndRoutes(start, end, ImmutableSet.of(routeId));
   }
 
 }

@@ -35,7 +35,6 @@ import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
@@ -200,15 +199,16 @@ public class ProxyProvider {
               Date start = range.hasStart() ? new Date(range.getStart() * 1000) : new Date();
               Date end = range.hasEnd() ? new Date(range.getEnd() * 1000) : new Date();
 
-              String routeId = trp.getRouteId();
+              Set<String> routeIds = ImmutableSet.copyOf(trp.getRouteId().split(", ?"));
 
-              Set<ActivatedTrip> staticTripsForRoute = _tripActivator.getTripsForRangeAndRoute(start, end, routeId)
+              Set<ActivatedTrip> staticTripsForRoute = _tripActivator.getTripsForRangeAndRoutes(start, end, routeIds)
                       .collect(Collectors.toSet());
 
               Set<String> matchedTripIds = new HashSet<>();
 
-              tripUpdatesByRoute
-                      .getOrDefault(routeId, Collections.emptyList())
+              routeIds.stream().flatMap(routeId -> {
+                return tripUpdatesByRoute.getOrDefault(routeId, Collections.emptyList()).stream();
+              })
                       .forEach(tu -> {
                         TripUpdate.Builder tub = TripUpdate.newBuilder(tu);
                         TripDescriptor.Builder tb = tub.getTripBuilder();
@@ -227,27 +227,26 @@ public class ProxyProvider {
                           tb.setTripId(rtid.toString());
                         }
 
-                        if (routesUsingAlternateIdFormat.contains(tb.getRouteId())) {
-                          matchedStaticTrip = staticTripsForRoute
-                                  .stream()
-                                  .filter(at -> at.getServiceDate().getAsString().equals(tb.getStartDate()))
-                                  .filter(at -> {
-                                    NyctTripId stid = at.getParsedTripId();
+                        Stream<ActivatedTrip> candidateTrips = staticTripsForRoute
+                                .stream()
+                                .filter(at -> at.getServiceDate().getAsString().equals(tb.getStartDate()))
+                                .filter(at -> at.getTrip().getRoute().getId().getId().equals(tb.getRouteId()));
 
-                                    return stid.getOriginDepartureTime() == rtid.getOriginDepartureTime()
-                                            && stid.getDirection().equals(rtid.getDirection());
-                                  })
+                        if (routesUsingAlternateIdFormat.contains(tb.getRouteId())) {
+                          matchedStaticTrip = candidateTrips.filter(at -> {
+                            NyctTripId stid = at.getParsedTripId();
+
+                            return stid.getOriginDepartureTime() == rtid.getOriginDepartureTime()
+                                    && stid.getDirection().equals(rtid.getDirection());
+                          })
                                   .findFirst();
                         } else {
-                          matchedStaticTrip = staticTripsForRoute
-                                  .stream()
-                                  .filter(at -> at.getServiceDate().getAsString().equals(tb.getStartDate()))
-                                  .filter(at -> {
-                                    NyctTripId stid = at.getParsedTripId();
+                          matchedStaticTrip = candidateTrips.filter(at -> {
+                            NyctTripId stid = at.getParsedTripId();
 
-                                    return stid.getOriginDepartureTime() == rtid.getOriginDepartureTime()
-                                            && stid.getPathId().equals(rtid.getPathId());
-                                  })
+                            return stid.getOriginDepartureTime() == rtid.getOriginDepartureTime()
+                                    && stid.getPathId().equals(rtid.getPathId());
+                          })
                                   .findFirst();
                         }
 
