@@ -35,7 +35,7 @@ public class NyctTripId {
   public String getPathId() {
     return pathId;
   }
-  
+
   public String getDirection() {
     return String.valueOf(pathId.charAt(3));
   }
@@ -108,8 +108,8 @@ public class NyctTripId {
 
   @Override
   public String toString() {
-    Joiner joiner = Joiner.on("_").skipNulls(); 
-    
+    Joiner joiner = Joiner.on("_").skipNulls();
+
     return joiner.join(timetable, originDepartureTime, pathId);
   }
 

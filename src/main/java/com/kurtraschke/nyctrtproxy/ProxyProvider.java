@@ -146,10 +146,8 @@ public class ProxyProvider {
                 throw new RuntimeException(ex);
               }
 
-              System.out.println(feedUrl);
-
               HttpGet get = new HttpGet(feedUrl);
-              
+
               try {
                 CloseableHttpResponse response = _httpClient.execute(get);
                 try (InputStream streamContent = response.getEntity().getContent()) {
@@ -166,13 +164,12 @@ public class ProxyProvider {
               feb.setId(tu.getTrip().getTripId());
               return feb.build();
             })
-            .sorted(Comparator.comparing(FeedEntity::getId))
             .forEach(grfu::addEntity);
 
     _tripUpdatesSink.handleFullUpdate(grfu);
   }
 
-  private NyctTripId parseTripId(String routeId, String tripId) {
+  private static NyctTripId parseTripId(String routeId, String tripId) {
     if (!routesUsingAlternateIdFormat.contains(routeId)) {
       return NyctTripId.buildFromString(tripId);
     } else {
@@ -180,7 +177,7 @@ public class ProxyProvider {
     }
   }
 
-  public Stream<TripUpdate> processFeed(Integer feedId, FeedMessage fm) {
+  private Stream<TripUpdate> processFeed(Integer feedId, FeedMessage fm) {
     Map<String, List<GtfsRealtime.TripUpdate>> tripUpdatesByRoute = fm
             .getEntityList()
             .stream()
@@ -207,6 +204,7 @@ public class ProxyProvider {
 
               Set<ActivatedTrip> staticTripsForRoute = _tripActivator.getTripsForRangeAndRoute(start, end, routeId)
                       .collect(Collectors.toSet());
+
               Set<String> matchedTripIds = new HashSet<>();
 
               tripUpdatesByRoute
@@ -219,7 +217,7 @@ public class ProxyProvider {
 
                         NyctTripId rtid = parseTripId(tb.getRouteId(), tb.getTripId());
 
-                        if (routesNeedingFixup.contains(tu.getTrip().getRouteId())) {
+                        if (routesNeedingFixup.contains(tb.getRouteId())) {
                           tb.setStartDate(tb.getStartDate().substring(0, 10).replace("-", ""));
 
                           tub.getStopTimeUpdateBuilderList().forEach(stub -> {
@@ -227,10 +225,9 @@ public class ProxyProvider {
                           });
 
                           tb.setTripId(rtid.toString());
-
                         }
 
-                        if (routesUsingAlternateIdFormat.contains(tu.getTrip().getRouteId())) {
+                        if (routesUsingAlternateIdFormat.contains(tb.getRouteId())) {
                           matchedStaticTrip = staticTripsForRoute
                                   .stream()
                                   .filter(at -> at.getServiceDate().getAsString().equals(tb.getStartDate()))
@@ -242,8 +239,9 @@ public class ProxyProvider {
                                   })
                                   .findFirst();
                         } else {
-                          matchedStaticTrip = staticTripsForRoute.stream()
-                                  .filter(at -> at.getServiceDate().getAsString().equals(tu.getTrip().getStartDate()))
+                          matchedStaticTrip = staticTripsForRoute
+                                  .stream()
+                                  .filter(at -> at.getServiceDate().getAsString().equals(tb.getStartDate()))
                                   .filter(at -> {
                                     NyctTripId stid = at.getParsedTripId();
 
@@ -251,7 +249,6 @@ public class ProxyProvider {
                                             && stid.getPathId().equals(rtid.getPathId());
                                   })
                                   .findFirst();
-
                         }
 
                         if (matchedStaticTrip.isPresent()) {

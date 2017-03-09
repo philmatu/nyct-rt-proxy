@@ -51,10 +51,6 @@ public class ProxyModule extends AbstractModule {
             .toProvider(GtfsRelationalDaoProvider.class)
             .in(Scopes.SINGLETON);
 
-    /*bind(TimeZone.class)
-     .annotatedWith(AgencyTimeZone.class)
-     .toProvider(AgencyTimeZoneProvider.class)
-     .in(Scopes.SINGLETON);*/
   }
 
   /**
