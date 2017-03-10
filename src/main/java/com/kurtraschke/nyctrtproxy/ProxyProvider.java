@@ -9,6 +9,8 @@ import org.onebusaway.gtfs_realtime.exporter.GtfsRealtimeFullUpdate;
 import org.onebusaway.gtfs_realtime.exporter.GtfsRealtimeGuiceBindingTypes.TripUpdates;
 import org.onebusaway.gtfs_realtime.exporter.GtfsRealtimeSink;
 
+import com.google.common.collect.BiMap;
+import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.protobuf.ExtensionRegistry;
@@ -34,6 +36,7 @@ import org.slf4j.LoggerFactory;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
@@ -81,6 +84,8 @@ public class ProxyProvider {
   private static final Set<String> routesUsingAlternateIdFormat = ImmutableSet.of("SI", "L", "N", "Q", "R", "W");
 
   private static final Set<String> routesNeedingFixup = ImmutableSet.of("SI", "N", "Q", "R", "W");
+
+  private static final Map<Integer, Map<String, String>> realtimeToStaticRouteMapByFeed = ImmutableMap.of(1, ImmutableMap.of("S", "GS"));
 
   static {
     _extensionRegistry = ExtensionRegistry.newInstance();
@@ -182,7 +187,12 @@ public class ProxyProvider {
             .stream()
             .filter(GtfsRealtime.FeedEntity::hasTripUpdate)
             .map(GtfsRealtime.FeedEntity::getTripUpdate)
-            .collect(Collectors.groupingBy(tu -> tu.getTrip().getRouteId()));
+            .collect(Collectors.groupingBy(tu -> {
+              String routeId = tu.getTrip().getRouteId();
+              return realtimeToStaticRouteMapByFeed
+                      .getOrDefault(feedId, Collections.emptyMap())
+                      .getOrDefault(routeId, routeId);
+            }));
 
     return fm.getHeader()
             .getExtension(GtfsRealtimeNYCT.nyctFeedHeader)
@@ -199,19 +209,30 @@ public class ProxyProvider {
               Date start = range.hasStart() ? new Date(range.getStart() * 1000) : new Date();
               Date end = range.hasEnd() ? new Date(range.getEnd() * 1000) : new Date();
 
-              Set<String> routeIds = ImmutableSet.copyOf(trp.getRouteId().split(", ?"));
+              Set<String> routeIds = Arrays.asList(trp.getRouteId().split(", ?")).stream()
+                      .map(routeId -> {
+                        return realtimeToStaticRouteMapByFeed
+                                .getOrDefault(feedId, Collections.emptyMap())
+                                .getOrDefault(routeId, routeId);
+                      }).collect(Collectors.toSet());
 
               Set<ActivatedTrip> staticTripsForRoute = _tripActivator.getTripsForRangeAndRoutes(start, end, routeIds)
                       .collect(Collectors.toSet());
 
               Set<String> matchedTripIds = new HashSet<>();
 
-              routeIds.stream().flatMap(routeId -> {
-                return tripUpdatesByRoute.getOrDefault(routeId, Collections.emptyList()).stream();
-              })
+              routeIds
+                      .stream()
+                      .flatMap(routeId -> {
+                        return tripUpdatesByRoute.getOrDefault(routeId, Collections.emptyList()).stream();
+                      })
                       .forEach(tu -> {
                         TripUpdate.Builder tub = TripUpdate.newBuilder(tu);
                         TripDescriptor.Builder tb = tub.getTripBuilder();
+
+                        tb.setRouteId(realtimeToStaticRouteMapByFeed
+                                .getOrDefault(feedId, Collections.emptyMap())
+                                .getOrDefault(tb.getRouteId(), tb.getRouteId()));
 
                         Optional<ActivatedTrip> matchedStaticTrip;
 
@@ -276,6 +297,7 @@ public class ProxyProvider {
                       .forEach(tripUpdatesStreamBuilder::accept);
 
               return tripUpdatesStreamBuilder.build();
-            });
+            }
+            );
   }
 }
