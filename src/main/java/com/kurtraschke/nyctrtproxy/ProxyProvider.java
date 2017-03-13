@@ -182,15 +182,17 @@ public class ProxyProvider {
   }
 
   private Stream<TripUpdate> processFeed(Integer feedId, FeedMessage fm) {
-    Map<String, List<GtfsRealtime.TripUpdate>> tripUpdatesByRoute = fm
+    final Map<String, String> realtimeToStaticRouteMap = realtimeToStaticRouteMapByFeed
+            .getOrDefault(feedId, Collections.emptyMap());
+
+    final Map<String, List<GtfsRealtime.TripUpdate>> tripUpdatesByRoute = fm
             .getEntityList()
             .stream()
             .filter(GtfsRealtime.FeedEntity::hasTripUpdate)
             .map(GtfsRealtime.FeedEntity::getTripUpdate)
             .collect(Collectors.groupingBy(tu -> {
               String routeId = tu.getTrip().getRouteId();
-              return realtimeToStaticRouteMapByFeed
-                      .getOrDefault(feedId, Collections.emptyMap())
+              return realtimeToStaticRouteMap
                       .getOrDefault(routeId, routeId);
             }));
 
@@ -199,39 +201,39 @@ public class ProxyProvider {
             .getTripReplacementPeriodList()
             .stream()
             .filter(trp -> {
-              return !routeBlacklistByFeed.getOrDefault(feedId, Collections.EMPTY_SET).contains(trp.getRouteId());
+              return !routeBlacklistByFeed
+                      .getOrDefault(feedId, Collections.emptySet())
+                      .contains(trp.getRouteId());
             })
             .flatMap(trp -> {
-              Stream.Builder<GtfsRealtime.TripUpdate> tripUpdatesStreamBuilder = Stream.builder();
-
               GtfsRealtime.TimeRange range = trp.getReplacementPeriod();
 
               Date start = range.hasStart() ? new Date(range.getStart() * 1000) : new Date();
               Date end = range.hasEnd() ? new Date(range.getEnd() * 1000) : new Date();
 
-              Set<String> routeIds = Arrays.asList(trp.getRouteId().split(", ?")).stream()
+              Set<String> routeIds = Arrays.asList(trp.getRouteId().split(", ?"))
+                      .stream()
                       .map(routeId -> {
-                        return realtimeToStaticRouteMapByFeed
-                                .getOrDefault(feedId, Collections.emptyMap())
+                        return realtimeToStaticRouteMap
                                 .getOrDefault(routeId, routeId);
                       }).collect(Collectors.toSet());
 
-              Set<ActivatedTrip> staticTripsForRoute = _tripActivator.getTripsForRangeAndRoutes(start, end, routeIds)
+              Set<ActivatedTrip> staticTripsForRoute = _tripActivator
+                      .getTripsForRangeAndRoutes(start, end, routeIds)
                       .collect(Collectors.toSet());
 
               Set<String> matchedTripIds = new HashSet<>();
 
-              routeIds
+              List<TripUpdate> tripsFromRealTime = routeIds
                       .stream()
                       .flatMap(routeId -> {
                         return tripUpdatesByRoute.getOrDefault(routeId, Collections.emptyList()).stream();
                       })
-                      .forEach(tu -> {
+                      .map(tu -> {
                         TripUpdate.Builder tub = TripUpdate.newBuilder(tu);
                         TripDescriptor.Builder tb = tub.getTripBuilder();
 
-                        tb.setRouteId(realtimeToStaticRouteMapByFeed
-                                .getOrDefault(feedId, Collections.emptyMap())
+                        tb.setRouteId(realtimeToStaticRouteMap
                                 .getOrDefault(tb.getRouteId(), tb.getRouteId()));
 
                         Optional<ActivatedTrip> matchedStaticTrip;
@@ -254,20 +256,22 @@ public class ProxyProvider {
                                 .filter(at -> at.getTrip().getRoute().getId().getId().equals(tb.getRouteId()));
 
                         if (routesUsingAlternateIdFormat.contains(tb.getRouteId())) {
-                          matchedStaticTrip = candidateTrips.filter(at -> {
-                            NyctTripId stid = at.getParsedTripId();
+                          matchedStaticTrip = candidateTrips
+                                  .filter(at -> {
+                                    NyctTripId stid = at.getParsedTripId();
 
-                            return stid.getOriginDepartureTime() == rtid.getOriginDepartureTime()
-                                    && stid.getDirection().equals(rtid.getDirection());
-                          })
+                                    return stid.getOriginDepartureTime() == rtid.getOriginDepartureTime()
+                                            && stid.getDirection().equals(rtid.getDirection());
+                                  })
                                   .findFirst();
                         } else {
-                          matchedStaticTrip = candidateTrips.filter(at -> {
-                            NyctTripId stid = at.getParsedTripId();
+                          matchedStaticTrip = candidateTrips
+                                  .filter(at -> {
+                                    NyctTripId stid = at.getParsedTripId();
 
-                            return stid.getOriginDepartureTime() == rtid.getOriginDepartureTime()
-                                    && stid.getPathId().equals(rtid.getPathId());
-                          })
+                                    return stid.getOriginDepartureTime() == rtid.getOriginDepartureTime()
+                                            && stid.getPathId().equals(rtid.getPathId());
+                                  })
                                   .findFirst();
                         }
 
@@ -278,11 +282,12 @@ public class ProxyProvider {
                         } else {
                           tb.setScheduleRelationship(ScheduleRelationship.ADDED);
                         }
+                        return tub.build();
+                      })
+                      .collect(Collectors.toList());
 
-                        tripUpdatesStreamBuilder.accept(tub.build());
-                      });
-
-              staticTripsForRoute.stream()
+              List<TripUpdate> canceledTrips = staticTripsForRoute
+                      .stream()
                       .filter(at -> !matchedTripIds.contains(at.getTrip().getId().getId()))
                       .map(at -> {
                         TripUpdate.Builder tub = TripUpdate.newBuilder();
@@ -291,13 +296,12 @@ public class ProxyProvider {
                         tdb.setRouteId(at.getTrip().getRoute().getId().getId());
                         tdb.setStartDate(at.getServiceDate().getAsString());
                         tdb.setScheduleRelationship(ScheduleRelationship.CANCELED);
-
                         return tub.build();
                       })
-                      .forEach(tripUpdatesStreamBuilder::accept);
+                      .collect(Collectors.toList());
 
-              return tripUpdatesStreamBuilder.build();
-            }
-            );
+              return Stream.concat(tripsFromRealTime.stream(),
+                      canceledTrips.stream());
+            });
   }
 }
