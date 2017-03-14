@@ -10,28 +10,30 @@ import com.amazonaws.services.cloudwatch.model.MetricDatum;
 import com.amazonaws.services.cloudwatch.model.PutMetricDataRequest;
 import com.amazonaws.services.cloudwatch.model.PutMetricDataResult;
 import com.amazonaws.services.cloudwatch.model.StandardUnit;
+import com.google.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.PostConstruct;
-import javax.inject.Inject;
 import javax.inject.Named;
 import java.util.Date;
 
 public class CloudwatchProxyDataListener implements ProxyDataListener {
   private static final Logger _log = LoggerFactory.getLogger(CloudwatchProxyDataListener.class);
 
-  @Inject
+  @Inject(optional = true)
   @Named("cloudwatch.namespace")
   private String _namespace;
 
-  @Inject
+  @Inject(optional = true)
   @Named("cloudwatch.accessKey")
   private String _accessKey;
 
-  @Inject
+  @Inject(optional = true)
   @Named("cloudwatch.secretKey")
   private String _secretKey;
+
+  private boolean _disabled = false;
 
   private AmazonCloudWatchAsync _client;
 
@@ -39,7 +41,11 @@ public class CloudwatchProxyDataListener implements ProxyDataListener {
 
   @PostConstruct
   public void init() {
-    //_client = new AmazonCloudWatchAsyncClient(new BasicAWSCredentials(_accessKey, _secretKey));
+    if (_secretKey == null || _accessKey == null || _namespace == null) {
+      _log.info("No AWS credentials supplied, disabling cloudwatch");
+      _disabled = true;
+      return;
+    }
     BasicAWSCredentials cred = new BasicAWSCredentials(_accessKey, _secretKey);
     _client = AmazonCloudWatchAsyncClientBuilder.standard()
             .withCredentials(new AWSStaticCredentialsProvider(cred))
@@ -65,7 +71,6 @@ public class CloudwatchProxyDataListener implements ProxyDataListener {
     dim.setValue(routeId);
     reportMatches(timestamp, dim, nMatchedTrips, nAddedTrips, nCancelledTrips);
     _log.info("time={}, route={}, nMatchedTrips={}, nAddedTrips={}, nCancelledTrips={}", timestamp, routeId, nMatchedTrips, nAddedTrips, nCancelledTrips);
-
   }
   @Override
   public void reportMatchesForFeed(String feedId, int nMatchedTrips, int nAddedTrips, int nCancelledTrips) {
@@ -78,6 +83,9 @@ public class CloudwatchProxyDataListener implements ProxyDataListener {
   }
 
   private void reportMatches(Date timestamp, Dimension dim, int nMatchedTrips, int nAddedTrips, int nCancelledTrips) {
+    if (_disabled)
+      return;
+
     double nStatic = nMatchedTrips + nCancelledTrips;
     double nMatchedPct = (double) nMatchedTrips / nStatic;
     double nCancelledPct = (double) nCancelledTrips / nStatic;
