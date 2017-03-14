@@ -92,7 +92,7 @@ public class ProxyProvider {
 
   private static final Set<String> routesUsingAlternateIdFormat = ImmutableSet.of("SI", "L", "N", "Q", "R", "W", "B", "D");
 
-  private static final Set<String> routesNeedingFixup = ImmutableSet.of("SI", "N", "Q", "R", "W");
+  private static final Set<String> routesNeedingFixup = ImmutableSet.of("SI", "N", "Q", "R", "W", "B", "D");
 
   private static final Map<Integer, Map<String, String>> realtimeToStaticRouteMapByFeed = ImmutableMap.of(1, ImmutableMap.of("S", "GS"));
 
