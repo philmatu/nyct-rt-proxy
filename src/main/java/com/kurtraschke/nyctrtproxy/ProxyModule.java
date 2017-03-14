@@ -5,6 +5,8 @@
  */
 package com.kurtraschke.nyctrtproxy;
 
+import com.kurtraschke.nyctrtproxy.services.CloudwatchProxyDataListener;
+import com.kurtraschke.nyctrtproxy.services.ProxyDataListener;
 import org.onebusaway.gtfs.model.calendar.CalendarServiceData;
 import org.onebusaway.gtfs.services.GtfsRelationalDao;
 import org.onebusaway.gtfs_realtime.exporter.GtfsRealtimeExporterModule;
@@ -51,6 +53,8 @@ public class ProxyModule extends AbstractModule {
             .toProvider(GtfsRelationalDaoProvider.class)
             .in(Scopes.SINGLETON);
 
+    bind(ProxyDataListener.class)
+            .toInstance(new CloudwatchProxyDataListener());
   }
 
   /**

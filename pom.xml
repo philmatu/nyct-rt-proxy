@@ -92,6 +92,19 @@
       <artifactId>commons-lang3</artifactId>
       <version>3.5</version>
     </dependency>
+
+    <dependency>
+      <groupId>com.amazonaws</groupId>
+      <artifactId>aws-java-sdk-cloudwatch</artifactId>
+      <version>1.11.104</version>
+    </dependency>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.8.1</version>
+      <scope>test</scope>
+    </dependency>
+
   </dependencies>
   
   <build>
