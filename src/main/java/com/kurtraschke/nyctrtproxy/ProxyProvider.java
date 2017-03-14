@@ -245,7 +245,7 @@ public class ProxyProvider {
 
         int nTripUpdatesFromStatic = 0, nTripUpdatesAdded = 0, nTripUpdatesCancelled = 0;
 
-        List<TripUpdate> tripUpdates = tripUpdatesByRoute.get(routeId);
+        List<TripUpdate> tripUpdates = tripUpdatesByRoute.getOrDefault(routeId, Collections.emptyList());
         for (TripUpdate tu : tripUpdates) {
           TripUpdate.Builder tub = TripUpdate.newBuilder(tu);
           TripDescriptor.Builder tb = tub.getTripBuilder();
