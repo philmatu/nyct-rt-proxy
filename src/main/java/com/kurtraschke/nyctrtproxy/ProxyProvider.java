@@ -195,14 +195,6 @@ public class ProxyProvider {
     _tripUpdatesSink.handleFullUpdate(grfu);
   }
 
-  private static NyctTripId parseTripId(String routeId, String tripId) {
-    if (!routesUsingAlternateIdFormat.contains(routeId)) {
-      return NyctTripId.buildFromString(tripId);
-    } else {
-      return NyctTripId.buildFromAlternateString(tripId);
-    }
-  }
-
   public List<TripUpdate> processFeed(Integer feedId, FeedMessage fm) {
     final Map<String, String> realtimeToStaticRouteMap = realtimeToStaticRouteMapByFeed
             .getOrDefault(feedId, Collections.emptyMap());
@@ -265,7 +257,7 @@ public class ProxyProvider {
 
           Optional<ActivatedTrip> matchedStaticTrip;
 
-          NyctTripId rtid = parseTripId(tb.getRouteId(), tb.getTripId());
+          NyctTripId rtid = NyctTripId.buildFromString(tb.getTripId());
 
           if (routesNeedingFixup.contains(tb.getRouteId())) {
             tb.setStartDate(fixedStartDate(tb));
@@ -281,30 +273,19 @@ public class ProxyProvider {
                   .stream()
                   .filter(at -> at.getServiceDate().getAsString().equals(tb.getStartDate()));
 
-          if (routesUsingAlternateIdFormat.contains(tb.getRouteId())) {
-            matchedStaticTrip = candidateTrips
+          List<ActivatedTrip> candidateMatches = candidateTrips
                     .filter(at -> {
-                      NyctTripId stid = at.getParsedTripId();
+                      NyctTripId atid = at.getParsedTripId();
+                      return routesUsingAlternateIdFormat.contains(routeId) ? atid.looseMatch(rtid) :  atid.strictMatch(rtid);
+                    }).collect(Collectors.toList());
 
-                      return stid.getOriginDepartureTime() == rtid.getOriginDepartureTime()
-                              && stid.getDirection().equals(rtid.getDirection());
-                    })
-                    .findFirst();
-          } else {
-            matchedStaticTrip = candidateTrips
-                    .filter(at -> {
-                      NyctTripId stid = at.getParsedTripId();
-
-                      return stid.getOriginDepartureTime() == rtid.getOriginDepartureTime()
-                              && stid.getPathId().equals(rtid.getPathId());
-                    })
-                    .findFirst();
-          }
+          matchedStaticTrip = (candidateMatches.size() == 1) ? Optional.of(candidateMatches.get(0)) : Optional.empty();
 
           if (matchedStaticTrip.isPresent()) {
             String staticTripId = matchedStaticTrip.get().getTrip().getId().getId();
             matchedTripIds.add(staticTripId);
             tb.setTripId(staticTripId);
+            removeTimepoints(matchedStaticTrip.get(), tub);
             nTripUpdatesFromStatic++;
           } else {
             tb.setScheduleRelationship(ScheduleRelationship.ADDED);
@@ -359,7 +340,7 @@ public class ProxyProvider {
   // take a TripUpdate and return the epoch time in millis that this trip started
   private static long tripUpdateStart(TripUpdate tu) {
     TripDescriptor td = tu.getTrip();
-    NyctTripId rtid = parseTripId(td.getRouteId(), td.getTripId());
+    NyctTripId rtid = NyctTripId.buildFromString(td.getTripId());
     int minHds = rtid.getOriginDepartureTime();
     String startDate = routesNeedingFixup.contains(td.getRouteId()) ? fixedStartDate(td) : td.getStartDate();
     ServiceDate sd;
@@ -381,4 +362,15 @@ public class ProxyProvider {
     return latestTime.isPresent() && latestTime.getAsLong() < timestamp - 300;
   }
 
+  private void removeTimepoints(ActivatedTrip trip, TripUpdate.Builder tripUpdate) {
+    Set<String> stopIds = trip.getStopTimes().stream()
+            .map(s -> s.getStop().getId().getId()).collect(Collectors.toSet());
+    for(int i = 0; i < tripUpdate.getStopTimeUpdateCount(); i++) {
+      String id = tripUpdate.getStopTimeUpdate(i).getStopId();
+      if (!stopIds.contains(id)) {
+        tripUpdate.removeStopTimeUpdate(i);
+        i--;
+      }
+    }
+  }
 }

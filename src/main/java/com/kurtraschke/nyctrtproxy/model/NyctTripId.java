@@ -23,6 +23,9 @@ public class NyctTripId {
   private final String timetable;
   private final int originDepartureTime;
   private final String pathId;
+  private String directionId;
+  private String routeId;
+  private String networkId;
 
   public String getTimetable() {
     return timetable;
@@ -37,37 +40,17 @@ public class NyctTripId {
   }
 
   public String getDirection() {
-    return String.valueOf(pathId.charAt(3));
+    return directionId;
   }
 
-  /**
-   *
-   *
-   *
-   *
-   * @param tripId
-   * @return
-   */
-  public static NyctTripId buildFromString(String tripId) {
-    ArrayDeque<String> tripIdParts = new ArrayDeque<>(Arrays.asList(tripId.split("_")));
-
-    String timetable = null;
-    int originDepartureTime;
-    String pathId;
-
-    switch (tripIdParts.size()) {
-      case 3:
-        timetable = tripIdParts.removeFirst();
-      case 2:
-        originDepartureTime = Integer.parseInt(tripIdParts.removeFirst(), 10);
-        pathId = tripIdParts.removeFirst();
-        break;
-      default:
-        throw new IllegalArgumentException();
-    }
-
-    return new NyctTripId(timetable, originDepartureTime, pathId);
+  public String getRouteId() {
+    return routeId;
   }
+
+  public String getNetworkId() {
+    return networkId;
+  }
+
 
   /**
    *
@@ -77,18 +60,23 @@ public class NyctTripId {
    * @param tripId
    * @return
    */
-  public static NyctTripId buildFromAlternateString(String tripId) {
+  public static NyctTripId buildFromString(String tripId) {
     int originDepartureTime;
-    String pathId;
+    String pathId, routeId, directionId, networkId;
 
-    Pattern pat = Pattern.compile("(?<originDepartureTime>[0-9]{6})_?(?<route>[A-Z0-9]+)\\.\\.(?<direction>[NS])$");
+    Pattern pat = Pattern.compile("([A-Z0-9]+_)?(?<originDepartureTime>[0-9]{6})_?(?<route>[A-Z0-9]+)\\.+(?<direction>[NS])(?<network>[A-Z0-9]*)$");
 
     Matcher matcher = pat.matcher(tripId);
 
     if (matcher.find()) {
       originDepartureTime = Integer.parseInt(matcher.group("originDepartureTime"), 10);
       pathId = StringUtils.rightPad(matcher.group("route"), 3, '.') + matcher.group("direction");
-      return new NyctTripId(null, originDepartureTime, pathId);
+      routeId = matcher.group("route");
+      directionId = matcher.group("direction");
+      networkId = matcher.group("network");
+      if (networkId.length() == 0)
+        networkId = null;
+      return new NyctTripId(null, originDepartureTime, pathId, routeId, directionId, networkId);
 
     } else {
       throw new IllegalArgumentException();
@@ -96,10 +84,13 @@ public class NyctTripId {
 
   }
 
-  private NyctTripId(String timetable, int originDepartureTime, String pathId) {
+  private NyctTripId(String timetable, int originDepartureTime, String pathId, String routeId, String directionId, String networkId) {
     this.timetable = timetable;
     this.originDepartureTime = originDepartureTime;
     this.pathId = pathId;
+    this.routeId = routeId;
+    this.directionId = directionId;
+    this.networkId = networkId;
   }
 
   private boolean hasTimetable() {
@@ -113,4 +104,14 @@ public class NyctTripId {
     return joiner.join(timetable, originDepartureTime, pathId);
   }
 
+  public boolean strictMatch(NyctTripId other) {
+    return getOriginDepartureTime() == other.getOriginDepartureTime()
+            && getDirection().equals(other.getDirection())
+            && getNetworkId().equals(other.getNetworkId());
+  }
+
+  public boolean looseMatch(NyctTripId other) {
+    return getOriginDepartureTime() == other.getOriginDepartureTime()
+            && getDirection().equals(other.getDirection());
+  }
 }

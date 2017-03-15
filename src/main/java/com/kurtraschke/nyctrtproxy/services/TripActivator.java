@@ -114,7 +114,7 @@ public class TripActivator {
               return tripsStream
                       .filter(t -> routeIds.contains(t.trip.getRoute().getId().getId()))
                       .filter(t -> serviceIdsForDate.contains(t.trip.getServiceId()))
-                      .map(t -> new ActivatedTrip(sd, t.trip, t.start, t.end));
+                      .map(t -> new ActivatedTrip(sd, t.trip, t.start, t.end, _dao.getStopTimesForTrip(t.trip)));
             });
 
   }

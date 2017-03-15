@@ -5,8 +5,11 @@
  */
 package com.kurtraschke.nyctrtproxy.model;
 
+import org.onebusaway.gtfs.model.StopTime;
 import org.onebusaway.gtfs.model.Trip;
 import org.onebusaway.gtfs.model.calendar.ServiceDate;
+
+import java.util.List;
 
 /**
  *
@@ -19,13 +22,15 @@ public class ActivatedTrip {
   private final NyctTripId parsedTripId;
   private long start;
   private long end;
+  private List<StopTime> stopTimes;
 
-  public ActivatedTrip(ServiceDate sd, Trip theTrip, long start, long end) {
+  public ActivatedTrip(ServiceDate sd, Trip theTrip, long start, long end, List<StopTime> stopTimes) {
     this.sd = sd;
     this.theTrip = theTrip;
     this.parsedTripId = NyctTripId.buildFromString(theTrip.getId().getId());
     this.start = sd.getAsDate().getTime()/1000 + start;
     this.end = sd.getAsDate().getTime()/1000 + end;
+    this.stopTimes = stopTimes;
   }
 
   public ServiceDate getServiceDate() {
@@ -46,6 +51,10 @@ public class ActivatedTrip {
 
   public long getStart() {
     return start;
+  }
+
+  public List<StopTime> getStopTimes() {
+    return stopTimes;
   }
 
   @Override
