@@ -17,11 +17,15 @@ public class ActivatedTrip {
   private final ServiceDate sd;
   private final Trip theTrip;
   private final NyctTripId parsedTripId;
+  private long start;
+  private long end;
 
-  public ActivatedTrip(ServiceDate sd, Trip theTrip) {
+  public ActivatedTrip(ServiceDate sd, Trip theTrip, long start, long end) {
     this.sd = sd;
     this.theTrip = theTrip;
     this.parsedTripId = NyctTripId.buildFromString(theTrip.getId().getId());
+    this.start = sd.getAsDate().getTime()/1000 + start;
+    this.end = sd.getAsDate().getTime()/1000 + end;
   }
 
   public ServiceDate getServiceDate() {
@@ -34,6 +38,14 @@ public class ActivatedTrip {
 
   public NyctTripId getParsedTripId() {
     return parsedTripId;
+  }
+
+  public long getEnd() {
+    return end;
+  }
+
+  public long getStart() {
+    return start;
   }
 
   @Override

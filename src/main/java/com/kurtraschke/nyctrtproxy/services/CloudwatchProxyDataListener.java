@@ -87,17 +87,23 @@ public class CloudwatchProxyDataListener implements ProxyDataListener {
       return;
 
     double nStatic = nMatchedTrips + nCancelledTrips;
-    double nMatchedPct = (double) nMatchedTrips / nStatic;
-    double nCancelledPct = (double) nCancelledTrips / nStatic;
+    double nMatchedPctOfStatic = (double) nMatchedTrips / nStatic;
+    double nCancelledPctOfStatic = (double) nCancelledTrips / nStatic;
+
+    double nRt = nMatchedTrips + nAddedTrips;
+    double nMatchedRtPCt = nMatchedTrips / nRt;
+    double nAddedRtPct = nAddedTrips / nRt;
 
     MetricDatum dMatched = metricCount(timestamp, "MatchedTrips", nMatchedTrips, dim);
     MetricDatum dAdded = metricCount(timestamp, "AddedTrips", nAddedTrips, dim);
     MetricDatum dCancelled = metricCount(timestamp, "CancelledTrips", nCancelledTrips, dim);
-    MetricDatum dMatchedPct = metricPct(timestamp, "MatchedTripsPct", nMatchedPct, dim);
-    MetricDatum dCancelledPct = metricPct(timestamp, "CancelledTripsPct", nCancelledPct, dim);
+    MetricDatum dMatchedPct = metricPct(timestamp, "MatchedStaticTripsPct", nMatchedPctOfStatic, dim);
+    MetricDatum dCancelledPct = metricPct(timestamp, "CancelledStaticTripsPct", nCancelledPctOfStatic, dim);
+    MetricDatum dMatchedRtPct = metricPct(timestamp, "MatchedRtTripsPct", nMatchedRtPCt, dim);
+    MetricDatum dAddedRtPct = metricPct(timestamp, "AddedRtTripsPct", nAddedRtPct, dim);
 
     PutMetricDataRequest request = new PutMetricDataRequest()
-            .withMetricData(dMatched, dAdded, dCancelled, dMatchedPct, dCancelledPct)
+            .withMetricData(dMatched, dAdded, dCancelled, dMatchedPct, dCancelledPct, dMatchedRtPct, dAddedRtPct)
             .withNamespace(_namespace);
 
     _client.putMetricDataAsync(request, _handler);

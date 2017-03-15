@@ -15,6 +15,8 @@ import org.onebusaway.gtfs.model.Trip;
 import org.onebusaway.gtfs.model.calendar.CalendarServiceData;
 import org.onebusaway.gtfs.serialization.GtfsReader;
 import org.onebusaway.gtfs.services.calendar.CalendarServiceDataFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -24,6 +26,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class SanityTest extends TestCase {
+
+  private static final Logger _log = LoggerFactory.getLogger(SanityTest.class);
 
   private ProxyProvider _proxyProvider;
   private ExtensionRegistry _extensionRegistry;
@@ -91,7 +95,7 @@ public class SanityTest extends TestCase {
     FeedMessage msg = FeedMessage.parseFrom(stream, _extensionRegistry);
     List<TripUpdate> updates = _proxyProvider.processFeed(feedId, msg);
 
-    int nScheduled = 0;
+    int nScheduled = 0, nCancelled = 0, nAdded = 0;
 
     for (TripUpdate tripUpdate : updates) {
       switch(tripUpdate.getTrip().getScheduleRelationship()) {
@@ -101,15 +105,18 @@ public class SanityTest extends TestCase {
           break;
         case CANCELED:
           checkCanceledTrip(tripUpdate);
+          nCancelled++;
           break;
         case ADDED:
           checkAddedTrip(tripUpdate);
+          nAdded++;
           break;
         default:
           throw new Exception("invalid schedule relationship");
       }
     }
 
+    _log.info("nScheduled={}, nCancelled={}, nAdded={}", nScheduled, nCancelled, nAdded);
     assertTrue(nScheduled > 0);
   }
 
