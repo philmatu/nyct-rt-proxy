@@ -6,7 +6,7 @@ import com.google.transit.realtime.GtfsRealtimeNYCT;
 import com.kurtraschke.nyctrtproxy.ProxyProvider;
 import com.kurtraschke.nyctrtproxy.services.TripActivator;
 import junit.framework.TestCase;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.onebusaway.gtfs.impl.GtfsRelationalDaoImpl;
 import org.onebusaway.gtfs.impl.calendar.CalendarServiceDataFactoryImpl;
@@ -22,25 +22,25 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
-public class SanityTest extends TestCase {
+import static org.junit.Assert.*;
+
+public class SanityTest {
 
   private static final Logger _log = LoggerFactory.getLogger(SanityTest.class);
 
-  private ProxyProvider _proxyProvider;
-  private ExtensionRegistry _extensionRegistry;
-  private GtfsRelationalDaoImpl _dao;
-  private String _agencyId = "MTA NYCT";
+  private static ProxyProvider _proxyProvider;
+  private static ExtensionRegistry _extensionRegistry;
+  private static GtfsRelationalDaoImpl _dao;
+  private static String _agencyId = "MTA NYCT";
 
-  @Before
-  public void setUp() {
+  @BeforeClass
+  public static void beforeClass() {
     _dao = new GtfsRelationalDaoImpl();
     GtfsReader reader = new GtfsReader();
     reader.setEntityStore(_dao);
     try {
-      File file = new File(this.getClass().getResource("/google_transit.zip").getFile());
+      File file = new File(TestCase.class.getResource("/google_transit.zip").getFile());
       reader.setInputLocation(file);
       reader.run();
       reader.close();
@@ -66,31 +66,31 @@ public class SanityTest extends TestCase {
   }
 
   @Test
-  public void testFeed1() throws Exception {
-    test(1, "1.pb");
+  public void test1_2017_03_13() throws Exception {
+    test(1, "1_2017-03-13.pb", 188, 24, 28);
   }
 
   @Test
-  public void testFeed2() throws Exception {
-    test(2, "2.pb");
+  public void test2_2017_03_13() throws Exception {
+    test(2, "2_2017-03-13.pb", 28, 0, 0);
   }
 
   @Test
-  public void testFeed11() throws Exception {
-    test(11, "11.pb");
+  public void test11_2017_03_13() throws Exception {
+    test(11, "11_2017-03-13.pb", 8, 0, 0);
   }
 
   @Test
-  public void testFeed16() throws Exception {
-    test(16, "16.pb");
+  public void test16_2017_03_13() throws Exception {
+    test(16, "16_2017-03-13.pb", 58, 42, 44);
   }
 
   @Test
-  public void testFeed21() throws Exception {
-    test(21, "21.pb");
+  public void test21_2017_03_13() throws Exception {
+    test(21, "21_2017-03-13.pb", 29, 24, 25);
   }
 
-  private void test(int feedId, String protobuf) throws Exception {
+  private void test(int feedId, String protobuf, int nScheduledExpected, int nCancelledExpected, int nAddedExpected) throws Exception {
     InputStream stream = this.getClass().getResourceAsStream("/" + protobuf);
     FeedMessage msg = FeedMessage.parseFrom(stream, _extensionRegistry);
     List<TripUpdate> updates = _proxyProvider.processFeed(feedId, msg);
@@ -112,12 +112,22 @@ public class SanityTest extends TestCase {
           nAdded++;
           break;
         default:
-          throw new Exception("invalid schedule relationship");
+          throw new Exception("unexpected schedule relationship");
       }
     }
 
     _log.info("nScheduled={}, nCancelled={}, nAdded={}", nScheduled, nCancelled, nAdded);
-    assertTrue(nScheduled > 0);
+    // make sure we have improved or stayed the same
+    assertTrue(nScheduled >= nScheduledExpected);
+    assertTrue(nCancelled <= nCancelledExpected);
+    assertTrue(nAdded <= nAddedExpected);
+
+    // if improved:
+    if (nScheduled != nScheduledExpected || nCancelled != nCancelledExpected || nAdded != nAddedExpected) {
+      _log.info("Better than expected, could update test.");
+      assertEquals("total num of RT trips changed", nScheduled + nAdded, nScheduledExpected + nAddedExpected);
+      assertEquals("total num of static trips changed", nScheduled + nCancelled, nScheduledExpected + nCancelledExpected);
+    }
   }
 
   private void checkScheduledTrip(TripUpdate tripUpdate) {
@@ -125,16 +135,17 @@ public class SanityTest extends TestCase {
     assertNotNull(trip);
     assertEquals(tripUpdate.getTrip().getRouteId(), trip.getRoute().getId().getId());
 
-    List<TripUpdate.StopTimeUpdate> stus = tripUpdate.getStopTimeUpdateList();
-
-    Set<String> stopIds = _dao.getStopTimesForTrip(trip)
-            .stream()
-            .map(st -> st.getStop().getId().getId())
-            .collect(Collectors.toSet());
-
-    for (TripUpdate.StopTimeUpdate stu : stus) {
-      //assertTrue(stopIds.contains(stu.getStopId()));
-    }
+    // skip stop test for now.
+//    List<TripUpdate.StopTimeUpdate> stus = tripUpdate.getStopTimeUpdateList();
+//
+//    Set<String> stopIds = _dao.getStopTimesForTrip(trip)
+//            .stream()
+//            .map(st -> st.getStop().getId().getId())
+//            .collect(Collectors.toSet());
+//
+//    for (TripUpdate.StopTimeUpdate stu : stus) {
+//      assertTrue(stopIds.contains(stu.getStopId()));
+//    }
 
   }
 
