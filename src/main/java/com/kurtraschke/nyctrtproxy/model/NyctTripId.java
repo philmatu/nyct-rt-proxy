@@ -8,6 +8,7 @@ package com.kurtraschke.nyctrtproxy.model;
 import com.google.common.base.Joiner;
 
 import org.apache.commons.lang3.StringUtils;
+import org.onebusaway.gtfs.model.Trip;
 
 import java.util.ArrayDeque;
 import java.util.Arrays;
@@ -113,5 +114,9 @@ public class NyctTripId {
   public boolean looseMatch(NyctTripId other) {
     return getOriginDepartureTime() == other.getOriginDepartureTime()
             && getDirection().equals(other.getDirection());
+  }
+
+  public boolean looseMatch(Trip trip) {
+    return looseMatch(buildFromString(trip.getId().getId()));
   }
 }

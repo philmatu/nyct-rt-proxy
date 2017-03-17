@@ -24,6 +24,9 @@ public class ActivatedTrip {
   private long end;
   private List<StopTime> stopTimes;
 
+  // TODO ?
+  private boolean sidFlag = false;
+
   public ActivatedTrip(ServiceDate sd, Trip theTrip, long start, long end, List<StopTime> stopTimes) {
     this.sd = sd;
     this.theTrip = theTrip;
@@ -55,6 +58,14 @@ public class ActivatedTrip {
 
   public List<StopTime> getStopTimes() {
     return stopTimes;
+  }
+
+  public void setSidFlag(boolean sidFlag) {
+    this.sidFlag = sidFlag;
+  }
+
+  public boolean getSidFlag() {
+    return sidFlag;
   }
 
   @Override
