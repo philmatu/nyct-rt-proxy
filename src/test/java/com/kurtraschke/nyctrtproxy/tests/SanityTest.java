@@ -4,6 +4,7 @@ import com.google.protobuf.ExtensionRegistry;
 import com.google.transit.realtime.GtfsRealtime.*;
 import com.google.transit.realtime.GtfsRealtimeNYCT;
 import com.kurtraschke.nyctrtproxy.ProxyProvider;
+import com.kurtraschke.nyctrtproxy.services.ActivatedTripMatcher;
 import com.kurtraschke.nyctrtproxy.services.TripActivator;
 import junit.framework.TestCase;
 import org.junit.BeforeClass;
@@ -56,8 +57,12 @@ public class SanityTest {
     ta.setGtfsRelationalDao(_dao);
     ta.start();
 
+    ActivatedTripMatcher tm = new ActivatedTripMatcher();
+    tm.setTripActivator(ta);
+
     _proxyProvider = new ProxyProvider();
     _proxyProvider.setTripActivator(ta);
+    _proxyProvider.setTripMatcher(tm);
 
     _extensionRegistry = ExtensionRegistry.newInstance();
     _extensionRegistry.add(GtfsRealtimeNYCT.nyctFeedHeader);

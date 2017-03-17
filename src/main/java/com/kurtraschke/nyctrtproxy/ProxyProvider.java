@@ -12,6 +12,7 @@ import com.google.common.collect.Sets;
 import com.google.common.collect.Streams;
 import com.google.inject.Inject;
 import com.kurtraschke.nyctrtproxy.services.ProxyDataListener;
+import com.kurtraschke.nyctrtproxy.services.TripMatcher;
 import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.gtfs.model.StopTime;
 import org.onebusaway.gtfs.model.calendar.ServiceDate;
@@ -93,6 +94,8 @@ public class ProxyProvider {
 
   private ProxyDataListener _listener;
 
+  private TripMatcher _tripMatcher;
+
   private static final Map<Integer, Set<String>> routeBlacklistByFeed = ImmutableMap.of(1, ImmutableSet.of("D", "N", "Q"));
 
   private static final Set<String> routesUsingAlternateIdFormat = ImmutableSet.of("SI", "L", "N", "Q", "R", "W", "B", "D");
@@ -136,6 +139,11 @@ public class ProxyProvider {
   @Inject(optional = true)
   public void setListener(ProxyDataListener listener) {
     _listener = listener;
+  }
+
+  @Inject
+  public void setTripMatcher(TripMatcher tm) {
+    _tripMatcher = tm;
   }
 
   @PostConstruct
@@ -239,6 +247,7 @@ public class ProxyProvider {
       for (ActivatedTrip trip : _tripActivator.getTripsForRangeAndRoutes(start, end, routeIds).collect(Collectors.toList())) {
         staticTripsForRoute.put(trip.getTrip().getRoute().getId().getId(), trip);
       }
+      _tripMatcher.initForFeed(staticTripsForRoute);
 
       Set<String> matchedTripIds = new HashSet<>();
 
@@ -255,7 +264,6 @@ public class ProxyProvider {
           tb.setRouteId(realtimeToStaticRouteMap
                   .getOrDefault(tb.getRouteId(), tb.getRouteId()));
 
-          Optional<ActivatedTrip> matchedStaticTrip;
 
           NyctTripId rtid = NyctTripId.buildFromString(tb.getTripId());
 
@@ -269,17 +277,7 @@ public class ProxyProvider {
             tb.setTripId(rtid.toString());
           }
 
-          Stream<ActivatedTrip> candidateTrips = staticTrips
-                  .stream()
-                  .filter(at -> at.getServiceDate().getAsString().equals(tb.getStartDate()));
-
-          List<ActivatedTrip> candidateMatches = candidateTrips
-                    .filter(at -> {
-                      NyctTripId atid = at.getParsedTripId();
-                      return routesUsingAlternateIdFormat.contains(routeId) ? atid.looseMatch(rtid) :  atid.strictMatch(rtid);
-                    }).collect(Collectors.toList());
-
-          matchedStaticTrip = (candidateMatches.size() == 1) ? Optional.of(candidateMatches.get(0)) : Optional.empty();
+          Optional<ActivatedTrip> matchedStaticTrip = _tripMatcher.match(tub, rtid);
 
           if (matchedStaticTrip.isPresent()) {
             String staticTripId = matchedStaticTrip.get().getTrip().getId().getId();
