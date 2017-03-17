@@ -28,7 +28,7 @@ public class ActivatedTripMatcher implements TripMatcher {
   }
 
   @Override
-  public Optional<ActivatedTrip> match(TripUpdateOrBuilder tu, NyctTripId rtid) {
+  public Optional<ActivatedTrip> match(TripUpdateOrBuilder tu, NyctTripId rtid, long timestamp) {
     String routeId = rtid.getRouteId();
     TripDescriptorOrBuilder tb = tu.getTrip();
     Stream<ActivatedTrip> candidateTrips = staticTripsForRoute.get(routeId)

@@ -277,7 +277,7 @@ public class ProxyProvider {
             tb.setTripId(rtid.toString());
           }
 
-          Optional<ActivatedTrip> matchedStaticTrip = _tripMatcher.match(tub, rtid);
+          Optional<ActivatedTrip> matchedStaticTrip = _tripMatcher.match(tub, rtid, fm.getHeader().getTimestamp());
 
           if (matchedStaticTrip.isPresent()) {
             String staticTripId = matchedStaticTrip.get().getTrip().getId().getId();

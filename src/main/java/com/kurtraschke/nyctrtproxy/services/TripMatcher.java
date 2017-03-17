@@ -9,7 +9,7 @@ import java.util.Optional;
 
 public interface TripMatcher {
 
-  Optional<ActivatedTrip> match(GtfsRealtime.TripUpdateOrBuilder tu, NyctTripId rtid);
+  Optional<ActivatedTrip> match(GtfsRealtime.TripUpdateOrBuilder tu, NyctTripId rtid, long timestamp);
 
   void initForFeed(Multimap<String, ActivatedTrip> map);
 }

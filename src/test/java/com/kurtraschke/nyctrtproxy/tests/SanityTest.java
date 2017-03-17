@@ -5,7 +5,9 @@ import com.google.transit.realtime.GtfsRealtime.*;
 import com.google.transit.realtime.GtfsRealtimeNYCT;
 import com.kurtraschke.nyctrtproxy.ProxyProvider;
 import com.kurtraschke.nyctrtproxy.services.ActivatedTripMatcher;
+import com.kurtraschke.nyctrtproxy.services.LazyTripMatcher;
 import com.kurtraschke.nyctrtproxy.services.TripActivator;
+import com.kurtraschke.nyctrtproxy.services.TripMatcher;
 import junit.framework.TestCase;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -57,8 +59,9 @@ public class SanityTest {
     ta.setGtfsRelationalDao(_dao);
     ta.start();
 
-    ActivatedTripMatcher tm = new ActivatedTripMatcher();
-    tm.setTripActivator(ta);
+    LazyTripMatcher tm = new LazyTripMatcher();
+    tm.setGtfsRelationalDao(_dao);
+    tm.setCalendarServiceData(csd);
 
     _proxyProvider = new ProxyProvider();
     _proxyProvider.setTripActivator(ta);

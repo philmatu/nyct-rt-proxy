@@ -116,7 +116,4 @@ public class NyctTripId {
             && getDirection().equals(other.getDirection());
   }
 
-  public boolean looseMatch(Trip trip) {
-    return looseMatch(buildFromString(trip.getId().getId()));
-  }
 }

@@ -1,5 +1,6 @@
 package com.kurtraschke.nyctrtproxy.services;
 
+import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 import com.google.inject.Inject;
 import com.google.transit.realtime.GtfsRealtime;
@@ -20,7 +21,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class LazyTripMatcher {
+public class LazyTripMatcher implements TripMatcher {
   private GtfsRelationalDao _dao;
   private CalendarServiceData _csd;
 
@@ -34,20 +35,22 @@ public class LazyTripMatcher {
     _csd = csd;
   }
 
-  public Optional<ActivatedTrip> search(GtfsRealtime.TripUpdateOrBuilder tu, NyctTripId id, long timestamp) {
-    if (id.getOriginDepartureTime() == 93100) {
-      System.out.println("hi");
-    }
+  @Override
+  public Optional<ActivatedTrip> match(GtfsRealtime.TripUpdateOrBuilder tu, NyctTripId id, long timestamp) {
     Set<ActivatedTrip> candidates = Sets.newHashSet();
     ServiceDate sd = new ServiceDate(new Date(timestamp * 1000));
     Route r = _dao.getRouteForId(new AgencyAndId("MTA NYCT", tu.getTrip().getRouteId()));
     for (Trip trip : _dao.getTripsForRoute(r)) {
-      if (!id.looseMatch(trip))
+      NyctTripId atid = NyctTripId.buildFromString(trip.getId().getId());
+      if (!atid.looseMatch(id))
         continue;
       List<StopTime> stopTimes = _dao.getStopTimesForTrip(trip);
       int start = stopTimes.get(0).getDepartureTime(); // in sec into day.
       int end = stopTimes.get(stopTimes.size()-1).getArrivalTime();
-      if (((double) start)/3600d == ((double)id.getOriginDepartureTime()/6000d)) {
+      if (atid.strictMatch(id)) {
+        candidates.add(new ActivatedTrip(sd, trip, start, end, stopTimes));
+      }
+      else if (((double) start)/3600d == ((double)id.getOriginDepartureTime()/6000d)) {
         List<GtfsRealtime.TripUpdate.StopTimeUpdate> stus = tu.getStopTimeUpdateList();
         if (tripMatch(stus, stopTimes))
           candidates.add(new ActivatedTrip(sd, trip, start, end, stopTimes));
@@ -61,6 +64,11 @@ public class LazyTripMatcher {
       }
     }
     return candidates.stream().findFirst();
+  }
+
+  @Override
+  public void initForFeed(Multimap<String, ActivatedTrip> map) {
+    // do nothing
   }
 
   private boolean tripMatch(List<GtfsRealtime.TripUpdate.StopTimeUpdate> stusWithTimepoints, List<StopTime> stopTimes) {
