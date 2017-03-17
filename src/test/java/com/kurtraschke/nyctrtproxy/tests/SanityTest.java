@@ -1,13 +1,10 @@
 package com.kurtraschke.nyctrtproxy.tests;
 
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 import com.google.protobuf.ExtensionRegistry;
 import com.google.transit.realtime.GtfsRealtime.*;
 import com.google.transit.realtime.GtfsRealtimeNYCT;
 import com.kurtraschke.nyctrtproxy.ProxyProvider;
-import com.kurtraschke.nyctrtproxy.services.CloudwatchProxyDataListener;
-import com.kurtraschke.nyctrtproxy.services.LazyTripMatcher;
+import com.kurtraschke.nyctrtproxy.services.ActivatedTripMatcher;
 import com.kurtraschke.nyctrtproxy.services.TripActivator;
 import junit.framework.TestCase;
 import org.junit.BeforeClass;
@@ -15,7 +12,6 @@ import org.junit.Test;
 import org.onebusaway.gtfs.impl.GtfsRelationalDaoImpl;
 import org.onebusaway.gtfs.impl.calendar.CalendarServiceDataFactoryImpl;
 import org.onebusaway.gtfs.model.AgencyAndId;
-import org.onebusaway.gtfs.model.StopTime;
 import org.onebusaway.gtfs.model.Trip;
 import org.onebusaway.gtfs.model.calendar.CalendarServiceData;
 import org.onebusaway.gtfs.serialization.GtfsReader;
@@ -26,12 +22,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 import static org.junit.Assert.*;
 
@@ -66,9 +57,8 @@ public class SanityTest {
     ta.setGtfsRelationalDao(_dao);
     ta.start();
 
-    LazyTripMatcher tm = new LazyTripMatcher();
-    tm.setGtfsRelationalDao(_dao);
-    tm.setCalendarServiceData(csd);
+    ActivatedTripMatcher tm = new ActivatedTripMatcher();
+    tm.setTripActivator(ta);
 
     _proxyProvider = new ProxyProvider();
     _proxyProvider.setTripActivator(ta);
@@ -78,11 +68,6 @@ public class SanityTest {
     _extensionRegistry.add(GtfsRealtimeNYCT.nyctFeedHeader);
     _extensionRegistry.add(GtfsRealtimeNYCT.nyctTripDescriptor);
     _extensionRegistry.add(GtfsRealtimeNYCT.nyctStopTimeUpdate);
-
-    // to enable logging
-    CloudwatchProxyDataListener listener = new CloudwatchProxyDataListener();
-    listener.init();
-    _proxyProvider.setListener(listener);
   }
 
   @Test
@@ -146,7 +131,7 @@ public class SanityTest {
     if (nScheduled != nScheduledExpected || nCancelled != nCancelledExpected || nAdded != nAddedExpected) {
       _log.info("Better than expected, could update test.");
       assertEquals("total num of RT trips changed", nScheduled + nAdded, nScheduledExpected + nAddedExpected);
-      // static trips could change if we have a trip getting matched that has ended according to schedule
+      assertEquals("total num of static trips changed", nScheduled + nCancelled, nScheduledExpected + nCancelledExpected);
     }
   }
 
@@ -155,61 +140,18 @@ public class SanityTest {
     assertNotNull(trip);
     assertEquals(tripUpdate.getTrip().getRouteId(), trip.getRoute().getId().getId());
 
-    List<TripUpdate.StopTimeUpdate> stus = tripUpdate.getStopTimeUpdateList();
-
-    List<String> stopTimes = _dao.getStopTimesForTrip(trip).stream()
-              .map(s -> s.getStop().getId().getId()).collect(Collectors.toList());
-
-      String firstStopId = stus.get(0).getStopId();
-      int gtfsIdx = 0;
-      while(!stopTimes.get(gtfsIdx).equals(firstStopId))
-        gtfsIdx++;
-
-      // we should contain stop updates from the current stop to the end.
-      for (TripUpdate.StopTimeUpdate stu : stus) {
-        assertTrue(stopTimes.get(gtfsIdx).equals(stu.getStopId()));
-        gtfsIdx++;
-    }
-
-    if (gtfsIdx != stopTimes.size())
-      System.out.println("s");
-    assertEquals(gtfsIdx, stopTimes.size());
-
-//    List<TripUpdate.StopTimeUpdate> subseq = longestSequence(stus, stopTimes);
+    // skip stop test for now.
+//    List<TripUpdate.StopTimeUpdate> stus = tripUpdate.getStopTimeUpdateList();
 //
-//    //assertEquals(subseq.get(subseq.size()-1).getStopId(), stopTimes.get(stopTimes.size() - 1));
+//    Set<String> stopIds = _dao.getStopTimesForTrip(trip)
+//            .stream()
+//            .map(st -> st.getStop().getId().getId())
+//            .collect(Collectors.toSet());
 //
-//    if (subseq.size() != stus.size()) {
-//      _log.warn("Weird number of STUs. Extras are:");
-//      for (TripUpdate.StopTimeUpdate stu : stus) {
-//        if (!subseq.contains(stu))
-//          _log.warn(stu.toString());
-//      }
+//    for (TripUpdate.StopTimeUpdate stu : stus) {
+//      assertTrue(stopIds.contains(stu.getStopId()));
 //    }
-  }
 
-  // return the longest sequence of TripUpdates that is continuous with stops
-  private List<TripUpdate.StopTimeUpdate> longestSequence(List<TripUpdate.StopTimeUpdate> updates, List<String> stops) {
-    Collection<List<TripUpdate.StopTimeUpdate>> possibilities = Sets.newHashSet();
-    Iterator<TripUpdate.StopTimeUpdate> iter = updates.iterator();
-    int gtfsIdx = 0;
-    while (iter.hasNext()) {
-      TripUpdate.StopTimeUpdate stu = iter.next();
-      while (!stops.get(gtfsIdx).equals(stu.getStopId()))
-        gtfsIdx++;
-
-      List<TripUpdate.StopTimeUpdate> stus = Lists.newArrayList();
-      while (stu != null && stops.get(gtfsIdx).equals(stu.getStopId())) {
-        stus.add(stu);
-        stu = null;
-        if (iter.hasNext()) {
-          stu = iter.next();
-          gtfsIdx++;
-        }
-      }
-      possibilities.add(stus);
-    }
-    return Collections.max(possibilities, (x, y) -> x.size() - y.size());
   }
 
   private void checkCanceledTrip(TripUpdate tripUpdate) {

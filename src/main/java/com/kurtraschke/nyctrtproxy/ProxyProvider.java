@@ -11,15 +11,11 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 import com.google.common.collect.Streams;
 import com.google.inject.Inject;
-import com.kurtraschke.nyctrtproxy.services.LazyTripMatcher;
 import com.kurtraschke.nyctrtproxy.services.ProxyDataListener;
+import com.kurtraschke.nyctrtproxy.services.TripMatcher;
 import org.onebusaway.gtfs.model.AgencyAndId;
-import org.onebusaway.gtfs.model.Route;
 import org.onebusaway.gtfs.model.StopTime;
-import org.onebusaway.gtfs.model.Trip;
-import org.onebusaway.gtfs.model.calendar.CalendarServiceData;
 import org.onebusaway.gtfs.model.calendar.ServiceDate;
-import org.onebusaway.gtfs.services.GtfsRelationalDao;
 import org.onebusaway.gtfs_realtime.exporter.GtfsRealtimeFullUpdate;
 import org.onebusaway.gtfs_realtime.exporter.GtfsRealtimeGuiceBindingTypes.TripUpdates;
 import org.onebusaway.gtfs_realtime.exporter.GtfsRealtimeSink;
@@ -57,7 +53,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -99,7 +94,7 @@ public class ProxyProvider {
 
   private ProxyDataListener _listener;
 
-  private LazyTripMatcher _tripMatcher;
+  private TripMatcher _tripMatcher;
 
   private static final Map<Integer, Set<String>> routeBlacklistByFeed = ImmutableMap.of(1, ImmutableSet.of("D", "N", "Q"));
 
@@ -147,7 +142,7 @@ public class ProxyProvider {
   }
 
   @Inject
-  public void setTripMatcher(LazyTripMatcher tm) {
+  public void setTripMatcher(TripMatcher tm) {
     _tripMatcher = tm;
   }
 
@@ -155,6 +150,7 @@ public class ProxyProvider {
   public void start() {
     _httpClient = HttpClientBuilder.create().setConnectionManager(_connectionManager).build();
     _updater = _scheduledExecutorService.scheduleWithFixedDelay(this::update, 0, 60, TimeUnit.SECONDS);
+
   }
 
   @PreDestroy
@@ -232,7 +228,6 @@ public class ProxyProvider {
 
     int nMatchedFeed = 0, nAddedFeed = 0, nCancelledFeed = 0;
     long nSkippedCancel = 0;
-    int nFoundTripOnSd = 0, nFoundTripNotOnSd = 0;
 
     for (GtfsRealtimeNYCT.TripReplacementPeriod trp : fm.getHeader()
             .getExtension(GtfsRealtimeNYCT.nyctFeedHeader)
@@ -252,6 +247,7 @@ public class ProxyProvider {
       for (ActivatedTrip trip : _tripActivator.getTripsForRangeAndRoutes(start, end, routeIds).collect(Collectors.toList())) {
         staticTripsForRoute.put(trip.getTrip().getRoute().getId().getId(), trip);
       }
+      _tripMatcher.initForFeed(staticTripsForRoute);
 
       Set<String> matchedTripIds = new HashSet<>();
 
@@ -268,7 +264,6 @@ public class ProxyProvider {
           tb.setRouteId(realtimeToStaticRouteMap
                   .getOrDefault(tb.getRouteId(), tb.getRouteId()));
 
-          Optional<ActivatedTrip> matchedStaticTrip;
 
           NyctTripId rtid = NyctTripId.buildFromString(tb.getTripId());
 
@@ -282,31 +277,7 @@ public class ProxyProvider {
             tb.setTripId(rtid.toString());
           }
 
-          Stream<ActivatedTrip> candidateTrips = staticTrips
-                  .stream()
-                  .filter(at -> at.getServiceDate().getAsString().equals(tb.getStartDate()));
-
-          List<ActivatedTrip> candidateMatches = candidateTrips
-                    .filter(at -> {
-                      NyctTripId atid = at.getParsedTripId();
-                      //return routesUsingAlternateIdFormat.contains(routeId) ? atid.looseMatch(rtid) :  atid.strictMatch(rtid);
-                      return atid.strictMatch(rtid);
-                    }).collect(Collectors.toList());
-
-          if (candidateMatches.size() == 1) {
-            matchedStaticTrip = Optional.of(candidateMatches.get(0));
-          } else if (candidateMatches.size() == 0) {
-            matchedStaticTrip = _tripMatcher.search(tub, rtid, fm.getHeader().getTimestamp());
-            if (matchedStaticTrip.isPresent()) {
-              ActivatedTrip at = matchedStaticTrip.get();
-              if (at.getSidFlag())
-                nFoundTripOnSd++;
-              else
-                nFoundTripNotOnSd++;
-            }
-          } else {
-            matchedStaticTrip = Optional.empty();
-          }
+          Optional<ActivatedTrip> matchedStaticTrip = _tripMatcher.match(tub, rtid);
 
           if (matchedStaticTrip.isPresent()) {
             String staticTripId = matchedStaticTrip.get().getTrip().getId().getId();
@@ -350,7 +321,7 @@ public class ProxyProvider {
     if (_listener != null)
       _listener.reportMatchesForFeed(feedId.toString(), nMatchedFeed, nAddedFeed, nCancelledFeed);
 
-    _log.info("feed={}, skipped cancel={}, expired TUs={}, found on SD={}, found on other SD={}", feedId, nSkippedCancel, nExpiredTus, nFoundTripOnSd, nFoundTripNotOnSd);
+    _log.info("feed={}, skipped cancel={}, expired TUs={}", feedId, nSkippedCancel, nExpiredTus);
     return ret;
   }
 
@@ -400,5 +371,4 @@ public class ProxyProvider {
       }
     }
   }
-
 }
