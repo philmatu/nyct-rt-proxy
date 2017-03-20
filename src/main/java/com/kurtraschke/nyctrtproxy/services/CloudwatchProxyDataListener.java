@@ -11,6 +11,7 @@ import com.amazonaws.services.cloudwatch.model.PutMetricDataRequest;
 import com.amazonaws.services.cloudwatch.model.PutMetricDataResult;
 import com.amazonaws.services.cloudwatch.model.StandardUnit;
 import com.google.inject.Inject;
+import com.kurtraschke.nyctrtproxy.model.MatchMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,64 +65,33 @@ public class CloudwatchProxyDataListener implements ProxyDataListener {
   }
 
   @Override
-  public void reportMatchesForRoute(String routeId, int nMatchedTrips, int nAddedTrips, int nCancelledTrips) {
+  public void reportMatchesForRoute(String routeId, MatchMetrics metrics) {
     Date timestamp = new Date();
     Dimension dim = new Dimension();
     dim.setName("route");
     dim.setValue(routeId);
-    reportMatches(timestamp, dim, nMatchedTrips, nAddedTrips, nCancelledTrips);
-    _log.info("time={}, route={}, nMatchedTrips={}, nAddedTrips={}, nCancelledTrips={}", timestamp, routeId, nMatchedTrips, nAddedTrips, nCancelledTrips);
+    reportMatches(timestamp, dim, metrics);
+    _log.info("time={}, route={}, nMatchedTrips={}, nAddedTrips={}, nCancelledTrips={}", timestamp, routeId, metrics.getMatchedTrips(), metrics.getAddedTrips(), metrics.getCancelledTrips());
   }
   @Override
-  public void reportMatchesForFeed(String feedId, int nMatchedTrips, int nAddedTrips, int nCancelledTrips) {
+  public void reportMatchesForFeed(String feedId, MatchMetrics metrics) {
     Date timestamp = new Date();
     Dimension dim = new Dimension();
     dim.setName("feed");
     dim.setValue(feedId);
-    reportMatches(timestamp, dim, nMatchedTrips, nAddedTrips, nCancelledTrips);
-    _log.info("time={}, feed={}, nMatchedTrips={}, nAddedTrips={}, nCancelledTrips={}", timestamp, feedId, nMatchedTrips, nAddedTrips, nCancelledTrips);
+    reportMatches(timestamp, dim, metrics);
+    _log.info("time={}, feed={}, nMatchedTrips={}, nAddedTrips={}, nCancelledTrips={}", timestamp, feedId, metrics.getMatchedTrips(), metrics.getAddedTrips(), metrics.getCancelledTrips());
   }
 
-  private void reportMatches(Date timestamp, Dimension dim, int nMatchedTrips, int nAddedTrips, int nCancelledTrips) {
+  private void reportMatches(Date timestamp, Dimension dim, MatchMetrics metrics) {
     if (_disabled)
       return;
 
-    double nStatic = nMatchedTrips + nCancelledTrips;
-    double nMatchedPctOfStatic = (double) nMatchedTrips / nStatic;
-    double nCancelledPctOfStatic = (double) nCancelledTrips / nStatic;
-
-    double nRt = nMatchedTrips + nAddedTrips;
-    double nMatchedRtPCt = nMatchedTrips / nRt;
-    double nAddedRtPct = nAddedTrips / nRt;
-
-    MetricDatum dMatched = metricCount(timestamp, "MatchedTrips", nMatchedTrips, dim);
-    MetricDatum dAdded = metricCount(timestamp, "AddedTrips", nAddedTrips, dim);
-    MetricDatum dCancelled = metricCount(timestamp, "CancelledTrips", nCancelledTrips, dim);
-    MetricDatum dMatchedPct = metricPct(timestamp, "MatchedStaticTripsPct", nMatchedPctOfStatic, dim);
-    MetricDatum dCancelledPct = metricPct(timestamp, "CancelledStaticTripsPct", nCancelledPctOfStatic, dim);
-    MetricDatum dMatchedRtPct = metricPct(timestamp, "MatchedRtTripsPct", nMatchedRtPCt, dim);
-    MetricDatum dAddedRtPct = metricPct(timestamp, "AddedRtTripsPct", nAddedRtPct, dim);
-
     PutMetricDataRequest request = new PutMetricDataRequest()
-            .withMetricData(dMatched, dAdded, dCancelled, dMatchedPct, dCancelledPct, dMatchedRtPct, dAddedRtPct)
+            .withMetricData(metrics.getReportedMetrics(dim, timestamp))
             .withNamespace(_namespace);
 
     _client.putMetricDataAsync(request, _handler);
   }
 
-  private static MetricDatum metricCount(Date timestamp, String name, int value, Dimension dim) {
-    return new MetricDatum().withMetricName(name)
-            .withTimestamp(timestamp)
-            .withValue((double) value)
-            .withUnit(StandardUnit.Count)
-            .withDimensions(dim);
-  }
-
-  private static MetricDatum metricPct(Date timestamp, String name, double value, Dimension dim) {
-    return new MetricDatum().withMetricName(name)
-            .withTimestamp(timestamp)
-            .withValue(value * 100.0)
-            .withUnit(StandardUnit.Percent)
-            .withDimensions(dim);
-  }
 }

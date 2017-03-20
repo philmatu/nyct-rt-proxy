@@ -5,6 +5,7 @@ import com.google.common.collect.Multimap;
 import com.google.transit.realtime.GtfsRealtime.*;
 import com.kurtraschke.nyctrtproxy.model.ActivatedTrip;
 import com.kurtraschke.nyctrtproxy.model.NyctTripId;
+import com.kurtraschke.nyctrtproxy.model.TripMatchResult;
 
 import javax.inject.Inject;
 import java.util.Date;
@@ -29,7 +30,7 @@ public class ActivatedTripMatcher implements TripMatcher {
   }
 
   @Override
-  public Optional<ActivatedTrip> match(TripUpdateOrBuilder tu, NyctTripId rtid, long timestamp) {
+  public TripMatchResult match(TripUpdateOrBuilder tu, NyctTripId rtid, long timestamp) {
     String routeId = rtid.getRouteId();
     TripDescriptorOrBuilder tb = tu.getTrip();
     Stream<ActivatedTrip> candidateTrips = staticTripsForRoute.get(routeId)
@@ -42,7 +43,16 @@ public class ActivatedTripMatcher implements TripMatcher {
               return routesUsingAlternateIdFormat.contains(routeId) ? atid.looseMatch(rtid) :  atid.strictMatch(rtid);
             }).collect(Collectors.toList());
 
-    return candidateMatches.stream().findFirst();
+    Optional<ActivatedTrip> at = candidateMatches.stream().findFirst();
+    TripMatchResult result = new TripMatchResult();
+    if (at.isPresent()) {
+      result.setStatus(routesUsingAlternateIdFormat.contains(routeId) ? TripMatchResult.Status.LOOSE_MATCH : TripMatchResult.Status.STRICT_MATCH);
+      result.setResult(at.get());
+    }
+    else {
+      result.setStatus(TripMatchResult.Status.NO_MATCH);
+    }
+    return result;
   }
 
   @Override

@@ -8,20 +8,15 @@ package com.kurtraschke.nyctrtproxy;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
-import com.google.common.collect.Sets;
-import com.google.common.collect.Streams;
 import com.google.inject.Inject;
+import com.kurtraschke.nyctrtproxy.model.MatchMetrics;
+import com.kurtraschke.nyctrtproxy.model.TripMatchResult;
 import com.kurtraschke.nyctrtproxy.services.ProxyDataListener;
 import com.kurtraschke.nyctrtproxy.services.TripMatcher;
-import org.onebusaway.gtfs.model.AgencyAndId;
-import org.onebusaway.gtfs.model.StopTime;
-import org.onebusaway.gtfs.model.calendar.ServiceDate;
 import org.onebusaway.gtfs_realtime.exporter.GtfsRealtimeFullUpdate;
 import org.onebusaway.gtfs_realtime.exporter.GtfsRealtimeGuiceBindingTypes.TripUpdates;
 import org.onebusaway.gtfs_realtime.exporter.GtfsRealtimeSink;
 
-import com.google.common.collect.BiMap;
-import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.protobuf.ExtensionRegistry;
@@ -47,7 +42,6 @@ import org.slf4j.LoggerFactory;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -55,18 +49,18 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.inject.Named;
+
+import static com.kurtraschke.nyctrtproxy.util.NycRealtimeUtil.*;
 
 /**
  *
@@ -204,6 +198,7 @@ public class ProxyProvider {
   }
 
   public List<TripUpdate> processFeed(Integer feedId, FeedMessage fm) {
+
     final Map<String, String> realtimeToStaticRouteMap = realtimeToStaticRouteMapByFeed
             .getOrDefault(feedId, Collections.emptyMap());
 
@@ -226,7 +221,7 @@ public class ProxyProvider {
 
     List<TripUpdate> ret = Lists.newArrayList();
 
-    int nMatchedFeed = 0, nAddedFeed = 0, nCancelledFeed = 0;
+    MatchMetrics feedMetrics = new MatchMetrics();
     long nSkippedCancel = 0;
 
     for (GtfsRealtimeNYCT.TripReplacementPeriod trp : fm.getHeader()
@@ -254,7 +249,7 @@ public class ProxyProvider {
       for (String routeId : routeIds) {
         Collection<ActivatedTrip> staticTrips = staticTripsForRoute.get(routeId);
 
-        int nTripUpdatesFromStatic = 0, nTripUpdatesAdded = 0, nTripUpdatesCancelled = 0;
+        MatchMetrics routeMetrics = new MatchMetrics();
 
         Collection<TripUpdate> tripUpdates = tripUpdatesByRoute.get(routeId);
         for (TripUpdate tu : tripUpdates) {
@@ -264,8 +259,8 @@ public class ProxyProvider {
           tb.setRouteId(realtimeToStaticRouteMap
                   .getOrDefault(tb.getRouteId(), tb.getRouteId()));
 
-
           NyctTripId rtid = NyctTripId.buildFromString(tb.getTripId());
+
 
           if (routesNeedingFixup.contains(tb.getRouteId())) {
             tb.setStartDate(fixedStartDate(tb));
@@ -277,17 +272,18 @@ public class ProxyProvider {
             tb.setTripId(rtid.toString());
           }
 
-          Optional<ActivatedTrip> matchedStaticTrip = _tripMatcher.match(tub, rtid, fm.getHeader().getTimestamp());
+          TripMatchResult result = _tripMatcher.match(tub, rtid, fm.getHeader().getTimestamp());
+          routeMetrics.add(result);
+          feedMetrics.add(result);
 
-          if (matchedStaticTrip.isPresent()) {
-            String staticTripId = matchedStaticTrip.get().getTrip().getId().getId();
+          if (result.getResult() != null) {
+            ActivatedTrip at = result.getResult();
+            String staticTripId = at.getTrip().getId().getId();
             matchedTripIds.add(staticTripId);
             tb.setTripId(staticTripId);
-            removeTimepoints(matchedStaticTrip.get(), tub);
-            nTripUpdatesFromStatic++;
+            removeTimepoints(at, tub);
           } else {
             tb.setScheduleRelationship(ScheduleRelationship.ADDED);
-            nTripUpdatesAdded++;
           }
           ret.add(tub.build());
         }
@@ -295,60 +291,34 @@ public class ProxyProvider {
         for (ActivatedTrip at : staticTrips) {
           if (!matchedTripIds.contains(at.getTrip().getId().getId())) {
             long time = fm.getHeader().getTimestamp();
-            if (at.getEnd() < time || at.getStart() > time) {
-              nSkippedCancel++;
-              continue;
+            if (at.activeFor(trp, time)) {
+              TripUpdate.Builder tub = TripUpdate.newBuilder();
+              TripDescriptor.Builder tdb = tub.getTripBuilder();
+              tdb.setTripId(at.getTrip().getId().getId());
+              tdb.setRouteId(at.getTrip().getRoute().getId().getId());
+              tdb.setStartDate(at.getServiceDate().getAsString());
+              tdb.setScheduleRelationship(ScheduleRelationship.CANCELED);
+              ret.add(tub.build());
+
+              routeMetrics.addCancelled();
+              feedMetrics.addCancelled();
             }
-            TripUpdate.Builder tub = TripUpdate.newBuilder();
-            TripDescriptor.Builder tdb = tub.getTripBuilder();
-            tdb.setTripId(at.getTrip().getId().getId());
-            tdb.setRouteId(at.getTrip().getRoute().getId().getId());
-            tdb.setStartDate(at.getServiceDate().getAsString());
-            tdb.setScheduleRelationship(ScheduleRelationship.CANCELED);
-            ret.add(tub.build());
-            nTripUpdatesCancelled++;
+            else {
+              nSkippedCancel++;
+            }
           }
         }
 
         if (_listener != null)
-          _listener.reportMatchesForRoute(routeId, nTripUpdatesFromStatic, nTripUpdatesAdded, nTripUpdatesCancelled);
-        nMatchedFeed += nTripUpdatesFromStatic;
-        nAddedFeed += nTripUpdatesAdded;
-        nCancelledFeed += nTripUpdatesCancelled;
+          _listener.reportMatchesForRoute(routeId, routeMetrics);
       }
     }
 
     if (_listener != null)
-      _listener.reportMatchesForFeed(feedId.toString(), nMatchedFeed, nAddedFeed, nCancelledFeed);
+      _listener.reportMatchesForFeed(feedId.toString(), feedMetrics);
 
     _log.info("feed={}, skipped cancel={}, expired TUs={}", feedId, nSkippedCancel, nExpiredTus);
     return ret;
-  }
-
-  private static String fixedStartDate(GtfsRealtime.TripDescriptorOrBuilder td) {
-    return td.getStartDate().substring(0, 10).replace("-", "");
-  }
-
-  private static Date earliestTripStart(Collection<TripUpdate> updates) {
-    OptionalLong time = updates.stream()
-            .mapToLong(ProxyProvider::tripUpdateStart).min();
-    return time.isPresent() ? new Date(time.getAsLong()) : null;
-  }
-
-  // take a TripUpdate and return the epoch time in millis that this trip started
-  private static long tripUpdateStart(TripUpdate tu) {
-    TripDescriptor td = tu.getTrip();
-    NyctTripId rtid = NyctTripId.buildFromString(td.getTripId());
-    int minHds = rtid.getOriginDepartureTime();
-    String startDate = routesNeedingFixup.contains(td.getRouteId()) ? fixedStartDate(td) : td.getStartDate();
-    ServiceDate sd;
-    try {
-      sd = ServiceDate.parseString(startDate);
-    } catch (ParseException e) {
-      _log.error("Error parsing trip update={}, exception={}", tu, e);
-      return Long.MAX_VALUE;
-    }
-    return sd.getAsDate().getTime()+ (minHds * 600); // 600 millis in 1/100 minute
   }
 
   private static boolean expiredTripUpdate(TripUpdate tu, long timestamp) {

@@ -8,6 +8,7 @@ import com.google.transit.realtime.GtfsRealtime;
 import com.google.transit.realtime.GtfsRealtime.TripUpdate.StopTimeUpdate;
 import com.kurtraschke.nyctrtproxy.model.ActivatedTrip;
 import com.kurtraschke.nyctrtproxy.model.NyctTripId;
+import com.kurtraschke.nyctrtproxy.model.TripMatchResult;
 import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.gtfs.model.Route;
 import org.onebusaway.gtfs.model.StopTime;
@@ -47,7 +48,9 @@ public class LazyTripMatcher implements TripMatcher {
   }
 
   @Override
-  public Optional<ActivatedTrip> match(GtfsRealtime.TripUpdateOrBuilder tu, NyctTripId id, long timestamp) {
+  public TripMatchResult match(GtfsRealtime.TripUpdateOrBuilder tu, NyctTripId id, long timestamp) {
+    TripMatchResult result = new TripMatchResult();
+    result.setStatus(TripMatchResult.Status.NO_TRIP_WITH_START_DATE);
     Set<ActivatedTrip> candidates = Sets.newHashSet();
     ServiceDate sd = new ServiceDate(new Date(timestamp * 1000));
     Set<AgencyAndId> serviceIds = _csd.getServiceIdsForDate(sd);
@@ -56,29 +59,36 @@ public class LazyTripMatcher implements TripMatcher {
       NyctTripId atid = NyctTripId.buildFromString(trip.getId().getId());
       if (!atid.looseMatch(id))
         continue;
+      result.setStatus(TripMatchResult.Status.NO_MATCH); // there IS a trip with start date
       List<StopTime> stopTimes = _dao.getStopTimesForTrip(trip);
       int start = stopTimes.get(0).getDepartureTime(); // in sec into day.
       int end = stopTimes.get(stopTimes.size()-1).getArrivalTime();
       if (atid.strictMatch(id) && serviceIds.contains(trip.getServiceId())) {
-        return Optional.of(new ActivatedTrip(sd, trip, start, end, stopTimes));
+        result.setStatus(TripMatchResult.Status.STRICT_MATCH);
+        result.setResult(new ActivatedTrip(sd, trip, start, end, stopTimes));
+        return result;
       }
       else if (!_looseMatchDisabled && ((double) start)/3600d == ((double)id.getOriginDepartureTime()/6000d)) {
         List<GtfsRealtime.TripUpdate.StopTimeUpdate> stus = tu.getStopTimeUpdateList();
         if (tripMatch(trip, stus, stopTimes)) {
           ActivatedTrip at = new ActivatedTrip(sd, trip, start, end, stopTimes);
-          at.setSource(ActivatedTrip.Source.LooseMatch);
           candidates.add(at);
         }
       }
     }
     for (ActivatedTrip trip : candidates) {
       if (serviceIds.contains(trip.getTrip().getServiceId())) {
-        return Optional.of(trip);
+        result.setStatus(TripMatchResult.Status.LOOSE_MATCH);
+        result.setResult(trip);
+        return result;
       }
     }
     Optional<ActivatedTrip> at = candidates.stream().findFirst();
-    at.ifPresent(t -> t.setSource(ActivatedTrip.Source.LooseMatchOnOtherServiceDate));
-    return at;
+    if (at.isPresent()) {
+      result.setStatus(TripMatchResult.Status.LOOSE_MATCH_ON_OTHER_SERVICE_DATE);
+      result.setResult(at.get());
+    }
+    return result;
   }
 
   @Override

@@ -6,6 +6,7 @@ import com.google.transit.realtime.GtfsRealtime.*;
 import com.google.transit.realtime.GtfsRealtimeNYCT;
 import com.kurtraschke.nyctrtproxy.model.ActivatedTrip;
 import com.kurtraschke.nyctrtproxy.model.NyctTripId;
+import com.kurtraschke.nyctrtproxy.model.TripMatchResult;
 import com.kurtraschke.nyctrtproxy.services.ActivatedTripMatcher;
 import com.kurtraschke.nyctrtproxy.services.LazyTripMatcher;
 import org.junit.Test;
@@ -72,13 +73,13 @@ public class LazyMatchingTest extends RtTestRunner {
           });
           tb.setTripId(rtid.toString());
 
-          Optional<ActivatedTrip> lazyTrip = ltm.match(tub, rtid, timestamp);
-          Optional<ActivatedTrip> activatedTrip = atm.match(tub, rtid, timestamp);
+          TripMatchResult lazyTrip = ltm.match(tub, rtid, timestamp);
+          TripMatchResult activatedTrip = atm.match(tub, rtid, timestamp);
 
-          if (activatedTrip.isPresent()) {
-            String atid = activatedTrip.get().getTrip().getId().getId();
-            assertTrue("activated trip is present: " + atid, lazyTrip.isPresent());
-            String ltid = lazyTrip.get().getTrip().getId().getId();
+          if (activatedTrip.hasResult()) {
+            String atid = activatedTrip.getResult().getTrip().getId().getId();
+            assertTrue("activated trip is present: " + atid, lazyTrip.hasResult());
+            String ltid = lazyTrip.getResult().getTrip().getId().getId();
             assertEquals(atid, ltid);
           }
         }
