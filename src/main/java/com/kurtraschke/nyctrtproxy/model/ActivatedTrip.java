@@ -5,6 +5,8 @@
  */
 package com.kurtraschke.nyctrtproxy.model;
 
+import com.google.transit.realtime.GtfsRealtimeNYCT.*;
+import com.google.transit.realtime.GtfsRealtime.*;
 import org.onebusaway.gtfs.model.StopTime;
 import org.onebusaway.gtfs.model.Trip;
 import org.onebusaway.gtfs.model.calendar.ServiceDate;
@@ -68,6 +70,13 @@ public class ActivatedTrip {
 
   public Source getSource() {
     return src;
+  }
+
+  public boolean activeFor(TripReplacementPeriod trp, long timestamp) {
+    TimeRange tr = trp.getReplacementPeriod();
+    long trStart = tr.hasStart() ? tr.getStart() : timestamp;
+    long trEnd = tr.hasEnd() ? tr.getEnd() : timestamp;
+    return getStart() < timestamp && getEnd() > trStart; // only consider trips that have *started* as active.
   }
 
   @Override

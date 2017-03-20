@@ -1,5 +1,6 @@
 package com.kurtraschke.nyctrtproxy.tests;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.transit.realtime.GtfsRealtime;
 import com.google.transit.realtime.GtfsRealtime.*;
 import com.google.transit.realtime.GtfsRealtimeNYCT;
@@ -12,9 +13,12 @@ import org.onebusaway.gtfs.model.calendar.ServiceDate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import static org.junit.Assert.*;
@@ -60,7 +64,7 @@ public class SanityTest extends RtTestRunner {
           checkScheduledTrip(tripUpdate);
           nScheduled++;
           nRt++;
-          if (tripInRange(tripUpdate, msg.getHeader()) && tripOnActiveServiceDay(tripUpdate, msg.getHeader()))
+          if (tripInRange(tripUpdate, msg) && tripOnActiveServiceDay(tripUpdate, msg.getHeader()))
             nStatic++;
           break;
         case CANCELED:
@@ -122,17 +126,30 @@ public class SanityTest extends RtTestRunner {
     assertNull(trip);
   }
 
-  private boolean tripInRange(GtfsRealtime.TripUpdate tu, GtfsRealtime.FeedHeader header) {
-    List<GtfsRealtimeNYCT.TripReplacementPeriod> trps = header.getExtension(GtfsRealtimeNYCT.nyctFeedHeader).getTripReplacementPeriodList();
-    long time = header.getTimestamp();
+  private static final Map<String, String> staticToRealtimeRouteMap = ImmutableMap.of("GS", "S");
+  private static String mapRoutetoRt(String route) {
+    return staticToRealtimeRouteMap.getOrDefault(route, route);
+  }
+
+  private boolean tripInRange(GtfsRealtime.TripUpdate tu, GtfsRealtime.FeedMessage msg) {
+    long time = msg.getHeader().getTimestamp();
+
+    List<GtfsRealtimeNYCT.TripReplacementPeriod> trps = msg.getHeader().getExtension(GtfsRealtimeNYCT.nyctFeedHeader).getTripReplacementPeriodList();
+    String routeId = tu.getTrip().getRouteId();
+    GtfsRealtimeNYCT.TripReplacementPeriod trp = trps.stream()
+            .filter(t -> Arrays.asList(t.getRouteId().split(",")).contains(mapRoutetoRt(routeId)))
+            .findFirst().get();
+
+    TimeRange tr = trp.getReplacementPeriod();
+    long trStart = tr.hasStart() ? tr.getStart() : time;
 
     Trip trip = getTrip(tu);
     List<StopTime> stopTimes = _dao.getStopTimesForTrip(trip);
-    ServiceDate sd = new ServiceDate(new Date(header.getTimestamp() * 1000));
+    ServiceDate sd = new ServiceDate(new Date(time * 1000));
     long date = sd.getAsDate().getTime()/1000;
     long tripstart = date + stopTimes.get(0).getDepartureTime();
     long tripend = date + stopTimes.get(stopTimes.size()-1).getArrivalTime();
-    return tripend >= time && tripstart <= time;
+    return tripstart < time && tripend > trStart;
   }
 
   private boolean tripOnActiveServiceDay(GtfsRealtime.TripUpdate tu, GtfsRealtime.FeedHeader header) {
