@@ -7,6 +7,7 @@ import com.kurtraschke.nyctrtproxy.model.ActivatedTrip;
 import com.kurtraschke.nyctrtproxy.model.NyctTripId;
 
 import javax.inject.Inject;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -41,7 +42,7 @@ public class ActivatedTripMatcher implements TripMatcher {
               return routesUsingAlternateIdFormat.contains(routeId) ? atid.looseMatch(rtid) :  atid.strictMatch(rtid);
             }).collect(Collectors.toList());
 
-    return (candidateMatches.size() == 1) ? Optional.of(candidateMatches.get(0)) : Optional.empty();
+    return candidateMatches.stream().findFirst();
   }
 
   @Override

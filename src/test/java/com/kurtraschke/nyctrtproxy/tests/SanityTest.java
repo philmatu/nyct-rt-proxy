@@ -1,77 +1,27 @@
 package com.kurtraschke.nyctrtproxy.tests;
 
-import com.google.protobuf.ExtensionRegistry;
+import com.google.transit.realtime.GtfsRealtime;
 import com.google.transit.realtime.GtfsRealtime.*;
 import com.google.transit.realtime.GtfsRealtimeNYCT;
-import com.kurtraschke.nyctrtproxy.ProxyProvider;
 import com.kurtraschke.nyctrtproxy.services.ActivatedTripMatcher;
-import com.kurtraschke.nyctrtproxy.services.LazyTripMatcher;
-import com.kurtraschke.nyctrtproxy.services.TripActivator;
-import com.kurtraschke.nyctrtproxy.services.TripMatcher;
-import junit.framework.TestCase;
-import org.junit.BeforeClass;
 import org.junit.Test;
-import org.onebusaway.gtfs.impl.GtfsRelationalDaoImpl;
-import org.onebusaway.gtfs.impl.calendar.CalendarServiceDataFactoryImpl;
 import org.onebusaway.gtfs.model.AgencyAndId;
+import org.onebusaway.gtfs.model.StopTime;
 import org.onebusaway.gtfs.model.Trip;
-import org.onebusaway.gtfs.model.calendar.CalendarServiceData;
-import org.onebusaway.gtfs.serialization.GtfsReader;
-import org.onebusaway.gtfs.services.calendar.CalendarServiceDataFactory;
+import org.onebusaway.gtfs.model.calendar.ServiceDate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.Assert.*;
 
-public class SanityTest {
+public class SanityTest extends RtTestRunner {
 
   private static final Logger _log = LoggerFactory.getLogger(SanityTest.class);
-
-  private static ProxyProvider _proxyProvider;
-  private static ExtensionRegistry _extensionRegistry;
-  private static GtfsRelationalDaoImpl _dao;
-  private static String _agencyId = "MTA NYCT";
-
-  @BeforeClass
-  public static void beforeClass() {
-    _dao = new GtfsRelationalDaoImpl();
-    GtfsReader reader = new GtfsReader();
-    reader.setEntityStore(_dao);
-    try {
-      File file = new File(TestCase.class.getResource("/google_transit.zip").getFile());
-      reader.setInputLocation(file);
-      reader.run();
-      reader.close();
-    } catch (IOException e) {
-      throw new RuntimeException("Failure while reading GTFS", e);
-    }
-
-    CalendarServiceDataFactory csdf = new CalendarServiceDataFactoryImpl(_dao);
-    CalendarServiceData csd = csdf.createData();
-
-    TripActivator ta = new TripActivator();
-    ta.setCalendarServiceData(csd);
-    ta.setGtfsRelationalDao(_dao);
-    ta.start();
-
-    LazyTripMatcher tm = new LazyTripMatcher();
-    tm.setGtfsRelationalDao(_dao);
-    tm.setCalendarServiceData(csd);
-
-    _proxyProvider = new ProxyProvider();
-    _proxyProvider.setTripActivator(ta);
-    _proxyProvider.setTripMatcher(tm);
-
-    _extensionRegistry = ExtensionRegistry.newInstance();
-    _extensionRegistry.add(GtfsRealtimeNYCT.nyctFeedHeader);
-    _extensionRegistry.add(GtfsRealtimeNYCT.nyctTripDescriptor);
-    _extensionRegistry.add(GtfsRealtimeNYCT.nyctStopTimeUpdate);
-  }
 
   @Test
   public void test1_2017_03_13() throws Exception {
@@ -99,25 +49,29 @@ public class SanityTest {
   }
 
   private void test(int feedId, String protobuf, int nScheduledExpected, int nCancelledExpected, int nAddedExpected) throws Exception {
-    InputStream stream = this.getClass().getResourceAsStream("/" + protobuf);
-    FeedMessage msg = FeedMessage.parseFrom(stream, _extensionRegistry);
+    FeedMessage msg = readFeedMessage(protobuf);
     List<TripUpdate> updates = _proxyProvider.processFeed(feedId, msg);
 
-    int nScheduled = 0, nCancelled = 0, nAdded = 0;
+    int nScheduled = 0, nCancelled = 0, nAdded = 0, nStatic = 0, nRt = 0;
 
     for (TripUpdate tripUpdate : updates) {
       switch(tripUpdate.getTrip().getScheduleRelationship()) {
         case SCHEDULED:
           checkScheduledTrip(tripUpdate);
           nScheduled++;
+          nRt++;
+          if (tripInRange(tripUpdate, msg.getHeader()) && tripOnActiveServiceDay(tripUpdate, msg.getHeader()))
+            nStatic++;
           break;
         case CANCELED:
           checkCanceledTrip(tripUpdate);
           nCancelled++;
+          nStatic++;
           break;
         case ADDED:
           checkAddedTrip(tripUpdate);
           nAdded++;
+          nRt++;
           break;
         default:
           throw new Exception("unexpected schedule relationship");
@@ -133,8 +87,8 @@ public class SanityTest {
     // if improved:
     if (nScheduled != nScheduledExpected || nCancelled != nCancelledExpected || nAdded != nAddedExpected) {
       _log.info("Better than expected, could update test.");
-      assertEquals("total num of RT trips changed", nScheduled + nAdded, nScheduledExpected + nAddedExpected);
-      assertEquals("total num of static trips changed", nScheduled + nCancelled, nScheduledExpected + nCancelledExpected);
+      assertEquals("total num of RT trips changed",  nScheduledExpected + nAddedExpected, nRt);
+      //assertEquals("total num of static trips changed", nScheduledExpected + nCancelledExpected, nStatic);
     }
   }
 
@@ -168,9 +122,24 @@ public class SanityTest {
     assertNull(trip);
   }
 
-  private Trip getTrip(TripUpdate tu) {
-    String tid = tu.getTrip().getTripId();
-    return _dao.getTripForId(new AgencyAndId(_agencyId, tid));
+  private boolean tripInRange(GtfsRealtime.TripUpdate tu, GtfsRealtime.FeedHeader header) {
+    List<GtfsRealtimeNYCT.TripReplacementPeriod> trps = header.getExtension(GtfsRealtimeNYCT.nyctFeedHeader).getTripReplacementPeriodList();
+    long time = header.getTimestamp();
+
+    Trip trip = getTrip(tu);
+    List<StopTime> stopTimes = _dao.getStopTimesForTrip(trip);
+    ServiceDate sd = new ServiceDate(new Date(header.getTimestamp() * 1000));
+    long date = sd.getAsDate().getTime()/1000;
+    long tripstart = date + stopTimes.get(0).getDepartureTime();
+    long tripend = date + stopTimes.get(stopTimes.size()-1).getArrivalTime();
+    return tripend >= time && tripstart <= time;
+  }
+
+  private boolean tripOnActiveServiceDay(GtfsRealtime.TripUpdate tu, GtfsRealtime.FeedHeader header) {
+    ServiceDate sd = new ServiceDate(new Date(header.getTimestamp() * 1000));
+    Set<AgencyAndId> sids = _csd.getServiceIdsForDate(sd);
+    Trip trip = getTrip(tu);
+    return sids.contains(trip.getServiceId());
   }
 
 }

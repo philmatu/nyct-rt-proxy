@@ -17,15 +17,17 @@ import java.util.List;
  */
 public class ActivatedTrip {
 
+  public enum Source {
+    Activator, LooseMatch, LooseMatchOnOtherServiceDate
+  };
+
   private final ServiceDate sd;
   private final Trip theTrip;
   private final NyctTripId parsedTripId;
   private long start;
   private long end;
   private List<StopTime> stopTimes;
-
-  // TODO ?
-  private boolean sidFlag = false;
+  private Source src = Source.Activator;
 
   public ActivatedTrip(ServiceDate sd, Trip theTrip, long start, long end, List<StopTime> stopTimes) {
     this.sd = sd;
@@ -60,12 +62,12 @@ public class ActivatedTrip {
     return stopTimes;
   }
 
-  public void setSidFlag(boolean sidFlag) {
-    this.sidFlag = sidFlag;
+  public void setSource(Source src) {
+    this.src = src;
   }
 
-  public boolean getSidFlag() {
-    return sidFlag;
+  public Source getSource() {
+    return src;
   }
 
   @Override
