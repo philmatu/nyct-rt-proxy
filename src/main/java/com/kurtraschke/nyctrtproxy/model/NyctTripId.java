@@ -106,14 +106,17 @@ public class NyctTripId {
   }
 
   public boolean strictMatch(NyctTripId other) {
-    return getOriginDepartureTime() == other.getOriginDepartureTime()
-            && getDirection().equals(other.getDirection())
+    return  looseMatch(other)
             && getNetworkId().equals(other.getNetworkId());
   }
 
   public boolean looseMatch(NyctTripId other) {
-    return getOriginDepartureTime() == other.getOriginDepartureTime()
-            && getDirection().equals(other.getDirection());
+    return routeDirMatch(other)
+            && getOriginDepartureTime() == other.getOriginDepartureTime();
   }
 
+  public boolean routeDirMatch(NyctTripId other) {
+    return getRouteId().equals(other.getRouteId())
+            && getDirection().equals(other.getDirection());
+  }
 }
