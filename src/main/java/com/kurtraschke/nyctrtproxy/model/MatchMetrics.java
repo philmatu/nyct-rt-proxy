@@ -12,9 +12,18 @@ public class MatchMetrics {
 
   private int nMatchedTrips = 0, nCancelledTrips = 0, nAddedTrips = 0;
   private int nUnmatchedNoStartDate = 0, nStrictMatch = 0, nLooseMatchSameDay = 0, nLooseMatchOtherDay = 0,
-    nUnmatchedNoStopMatch = 0;
+    nUnmatchedNoStopMatch = 0, nLooseMatchCoercion = 0, nDuplicates = 0;
+
+  Set<String> tripIds = Sets.newHashSet();
 
   public void add(TripMatchResult result) {
+    if (result.hasResult()) {
+      String tripId = result.getResult().getTrip().getId().getId();
+      if (tripIds.contains(tripIds)) {
+        nDuplicates++;
+      }
+      tripIds.add(tripId);
+    }
     switch (result.getStatus()) {
       case NO_TRIP_WITH_START_DATE:
         nAddedTrips++;
@@ -35,6 +44,10 @@ public class MatchMetrics {
       case LOOSE_MATCH_ON_OTHER_SERVICE_DATE:
         nMatchedTrips++;
         nLooseMatchOtherDay++;
+        break;
+      case LOOSE_MATCH_COERCION:
+        nMatchedTrips++;
+        nLooseMatchCoercion++;
         break;
     }
   }
@@ -57,6 +70,7 @@ public class MatchMetrics {
     double nStrictMatchPct = ((double) nStrictMatch) / nRt;
     double nLooseMatchSameDayPct = ((double) nLooseMatchSameDay) / nRt;
     double nLooseMatchOtherDayPct = ((double) nLooseMatchOtherDay) / nRt;
+    double nLooseMatchCoercionPct = ((double) nLooseMatchCoercion) / nRt;
 
     MetricDatum dMatched = metricCount(timestamp, "MatchedTrips", nMatchedTrips, dim);
     MetricDatum dAdded = metricCount(timestamp, "AddedTrips", nAddedTrips, dim);
@@ -66,6 +80,8 @@ public class MatchMetrics {
     MetricDatum dStrictMatch = metricCount(timestamp, "StrictMatches", nStrictMatch, dim);
     MetricDatum dLooseMatchSameDay = metricCount(timestamp, "LooseMatchesSameDay", nLooseMatchSameDay, dim);
     MetricDatum dLooseMatchOtherDay = metricCount(timestamp, "LooseMatchesOtherDay", nLooseMatchOtherDay, dim);
+    MetricDatum dLooseMatchCoercion = metricCount(timestamp, "LooseMatchCoercion", nLooseMatchCoercion, dim);
+    MetricDatum dDuplicateTrips = metricCount(timestamp, "DuplicateTripMatches", nDuplicates, dim);
 
     MetricDatum dMatchedPct = metricPct(timestamp, "MatchedStaticTripsPct", nMatchedPctOfStatic, dim);
     MetricDatum dCancelledPct = metricPct(timestamp, "CancelledStaticTripsPct", nCancelledPctOfStatic, dim);
@@ -76,10 +92,12 @@ public class MatchMetrics {
     MetricDatum dStrictMatchPct = metricPct(timestamp, "StrictMatchPct", nStrictMatchPct, dim);
     MetricDatum dLooseMatchSameDayPct = metricPct(timestamp, "LooseMatchSameDayPct", nLooseMatchSameDayPct, dim);
     MetricDatum dLooseMatchOtherDayPct = metricPct(timestamp, "LooseMatchOtherDayPct", nLooseMatchOtherDayPct, dim);
+    MetricDatum dLooseMatchCoercionPct = metricPct(timestamp, "LooseMatchCoercionPct", nLooseMatchCoercionPct, dim);
 
     return Sets.newHashSet(dMatched, dAdded, dCancelled, dMatchedPct, dCancelledPct, dMatchedRtPct, dAddedRtPct,
             dUnmatchedNoStartDate, dStrictMatch, dLooseMatchSameDay, dLooseMatchOtherDay, dUnmatchedWithoutStartDatePct,
-            dStrictMatchPct, dLooseMatchSameDayPct, dLooseMatchOtherDayPct, dUnmatchedNoStopMatch, dUnmatchedNoStopMatchPct);
+            dStrictMatchPct, dLooseMatchSameDayPct, dLooseMatchOtherDayPct, dUnmatchedNoStopMatch, dUnmatchedNoStopMatchPct,
+            dLooseMatchCoercion, dLooseMatchCoercionPct, dDuplicateTrips);
   }
 
   public int getMatchedTrips() {

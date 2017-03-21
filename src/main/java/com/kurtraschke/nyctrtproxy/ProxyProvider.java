@@ -279,10 +279,12 @@ public class ProxyProvider {
           if (result.getResult() != null) {
             ActivatedTrip at = result.getResult();
             String staticTripId = at.getTrip().getId().getId();
+            _log.info("matched {} to {}", tub.getTrip().getTripId(), at.getTrip());
             matchedTripIds.add(staticTripId);
             tb.setTripId(staticTripId);
             removeTimepoints(at, tub);
           } else {
+            _log.info("unmatched: {}", tub.getTrip().getTripId());
             tb.setScheduleRelationship(ScheduleRelationship.ADDED);
           }
           ret.add(tub.build());

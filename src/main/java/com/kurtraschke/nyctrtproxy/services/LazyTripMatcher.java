@@ -19,14 +19,16 @@ import org.onebusaway.gtfs.services.GtfsRelationalDao;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 public class LazyTripMatcher implements TripMatcher {
+
+  private static final int LATE_TRIP_LIMIT_SEC = 3600; // 1 hour
   private GtfsRelationalDao _dao;
   private CalendarServiceData _csd;
   private boolean _looseMatchDisabled = false;
@@ -49,46 +51,42 @@ public class LazyTripMatcher implements TripMatcher {
 
   @Override
   public TripMatchResult match(GtfsRealtime.TripUpdateOrBuilder tu, NyctTripId id, long timestamp) {
-    TripMatchResult result = new TripMatchResult();
-    result.setStatus(TripMatchResult.Status.NO_TRIP_WITH_START_DATE);
-    Set<ActivatedTrip> candidates = Sets.newHashSet();
+    // why did we not find a trip:
+    TripMatchResult.Status notFoundStatus = TripMatchResult.Status.NO_TRIP_WITH_START_DATE;
+
+    Set<TripMatchResult> candidates = Sets.newHashSet();
     ServiceDate sd = new ServiceDate(new Date(timestamp * 1000));
     Set<AgencyAndId> serviceIds = _csd.getServiceIdsForDate(sd);
     Route r = _dao.getRouteForId(new AgencyAndId("MTA NYCT", tu.getTrip().getRouteId()));
     for (Trip trip : _dao.getTripsForRoute(r)) {
       NyctTripId atid = NyctTripId.buildFromString(trip.getId().getId());
-      if (!atid.looseMatch(id))
+      if (!atid.routeDirMatch(id))
         continue;
-      result.setStatus(TripMatchResult.Status.NO_MATCH); // there IS a trip with start date
+      notFoundStatus = TripMatchResult.Status.NO_MATCH; // there IS a trip with start date
       List<StopTime> stopTimes = _dao.getStopTimesForTrip(trip);
       int start = stopTimes.get(0).getDepartureTime(); // in sec into day.
       int end = stopTimes.get(stopTimes.size()-1).getArrivalTime();
-      if (atid.strictMatch(id) && serviceIds.contains(trip.getServiceId())) {
-        result.setStatus(TripMatchResult.Status.STRICT_MATCH);
-        result.setResult(new ActivatedTrip(sd, trip, start, end, stopTimes));
-        return result;
+      boolean onServiceDay = serviceIds.contains(trip.getServiceId());
+      if (atid.strictMatch(id) && onServiceDay) {
+        return new TripMatchResult(new ActivatedTrip(sd, trip, start, end, stopTimes));
       }
-      else if (!_looseMatchDisabled && ((double) start)/3600d == ((double)id.getOriginDepartureTime()/6000d)) {
+      // loose match, RT trip could be late relative to static trip
+      int delta = (int) (((double) id.getOriginDepartureTime())*0.6 - start);
+      if (!_looseMatchDisabled && delta >= 0 && delta < LATE_TRIP_LIMIT_SEC) {
         List<GtfsRealtime.TripUpdate.StopTimeUpdate> stus = tu.getStopTimeUpdateList();
         if (tripMatch(trip, stus, stopTimes)) {
           ActivatedTrip at = new ActivatedTrip(sd, trip, start, end, stopTimes);
-          candidates.add(at);
+          TripMatchResult result = TripMatchResult.looseMatch(at, delta, onServiceDay);
+          // disable trips that are coerced AND on a different day
+          if (onServiceDay || delta == 0)
+            candidates.add(result);
         }
       }
     }
-    for (ActivatedTrip trip : candidates) {
-      if (serviceIds.contains(trip.getTrip().getServiceId())) {
-        result.setStatus(TripMatchResult.Status.LOOSE_MATCH);
-        result.setResult(trip);
-        return result;
-      }
-    }
-    Optional<ActivatedTrip> at = candidates.stream().findFirst();
-    if (at.isPresent()) {
-      result.setStatus(TripMatchResult.Status.LOOSE_MATCH_ON_OTHER_SERVICE_DATE);
-      result.setResult(at.get());
-    }
-    return result;
+    if (candidates.isEmpty())
+      return new TripMatchResult(notFoundStatus);
+    else
+      return Collections.max(candidates);
   }
 
   @Override

@@ -8,7 +8,6 @@ import com.kurtraschke.nyctrtproxy.model.NyctTripId;
 import com.kurtraschke.nyctrtproxy.model.TripMatchResult;
 
 import javax.inject.Inject;
-import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -44,15 +43,13 @@ public class ActivatedTripMatcher implements TripMatcher {
             }).collect(Collectors.toList());
 
     Optional<ActivatedTrip> at = candidateMatches.stream().findFirst();
-    TripMatchResult result = new TripMatchResult();
     if (at.isPresent()) {
-      result.setStatus(routesUsingAlternateIdFormat.contains(routeId) ? TripMatchResult.Status.LOOSE_MATCH : TripMatchResult.Status.STRICT_MATCH);
-      result.setResult(at.get());
+      if (routesUsingAlternateIdFormat.contains(routeId))
+        return new TripMatchResult(TripMatchResult.Status.LOOSE_MATCH, at.get(), 0);
+      else
+        return new TripMatchResult(at.get());
     }
-    else {
-      result.setStatus(TripMatchResult.Status.NO_MATCH);
-    }
-    return result;
+    return new TripMatchResult(TripMatchResult.Status.NO_MATCH);
   }
 
   @Override

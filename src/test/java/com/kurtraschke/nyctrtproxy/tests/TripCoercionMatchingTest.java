@@ -34,6 +34,7 @@ public class TripCoercionMatchingTest extends LazyMatchingTest {
         break;
       case 63800:
         assertCoercedMatch(result, "R20161106WKD_063600_SI.S03R");
+        break;
       case 66100:
         assertLooseMatch(result, "R20161106WKD_066100_SI.N03R");
         break;
@@ -46,12 +47,14 @@ public class TripCoercionMatchingTest extends LazyMatchingTest {
   }
 
   private static void assertLooseMatch(TripMatchResult result, String expected) {
+    assertTrue(result.hasResult());
     String matchedTripId = result.getResult().getTrip().getId().getId();
     assertEquals(expected, matchedTripId);
     assertEquals(result.getStatus(), TripMatchResult.Status.LOOSE_MATCH);
   }
 
   private static void assertCoercedMatch(TripMatchResult result, String expected) {
+    assertTrue(result.hasResult());
     String matchedTripId = result.getResult().getTrip().getId().getId();
     assertEquals(expected, matchedTripId);
     assertEquals(result.getStatus(), TripMatchResult.Status.LOOSE_MATCH_COERCION);
