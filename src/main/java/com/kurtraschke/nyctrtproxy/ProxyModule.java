@@ -5,8 +5,8 @@
  */
 package com.kurtraschke.nyctrtproxy;
 
-import com.kurtraschke.nyctrtproxy.services.ActivatedTripMatcher;
 import com.kurtraschke.nyctrtproxy.services.CloudwatchProxyDataListener;
+import com.kurtraschke.nyctrtproxy.services.LazyTripMatcher;
 import com.kurtraschke.nyctrtproxy.services.ProxyDataListener;
 import com.kurtraschke.nyctrtproxy.services.TripMatcher;
 import org.onebusaway.gtfs.model.calendar.CalendarServiceData;
@@ -59,7 +59,7 @@ public class ProxyModule extends AbstractModule {
             .toInstance(new CloudwatchProxyDataListener());
 
     bind(TripMatcher.class)
-            .toInstance(new ActivatedTripMatcher());
+            .toInstance(new LazyTripMatcher());
   }
 
   /**

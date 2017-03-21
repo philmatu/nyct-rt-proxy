@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.PostConstruct;
 import javax.inject.Named;
 import java.util.Date;
+import java.util.Set;
 
 public class CloudwatchProxyDataListener implements ProxyDataListener {
   private static final Logger _log = LoggerFactory.getLogger(CloudwatchProxyDataListener.class);
@@ -87,8 +88,9 @@ public class CloudwatchProxyDataListener implements ProxyDataListener {
     if (_disabled)
       return;
 
+    Set<MetricDatum> data = metrics.getReportedMetrics(dim, timestamp);
     PutMetricDataRequest request = new PutMetricDataRequest()
-            .withMetricData(metrics.getReportedMetrics(dim, timestamp))
+            .withMetricData(data)
             .withNamespace(_namespace);
 
     _client.putMetricDataAsync(request, _handler);
