@@ -42,6 +42,12 @@ public class SanityTest extends RtTestRunner {
     test(11, "11_2017-03-13.pb", 8, 0, 0);
   }
 
+  // this is specifically for testing trip coercion
+  @Test
+  public void test11_2017_03_21() throws Exception {
+    test(11, "11_2017-03-21.pb", 6, 0, 0);
+  }
+
   @Test
   public void test16_2017_03_13() throws Exception {
     test(16, "16_2017-03-13.pb", 58, 42, 44);
@@ -117,6 +123,7 @@ public class SanityTest extends RtTestRunner {
 
   private void checkCanceledTrip(TripUpdate tripUpdate) {
     Trip trip = getTrip(tripUpdate);
+    _log.info("cancelled: {}", trip);
     assertNotNull(trip);
     assertEquals(tripUpdate.getTrip().getRouteId(), trip.getRoute().getId().getId());
   }

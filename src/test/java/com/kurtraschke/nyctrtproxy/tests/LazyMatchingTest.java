@@ -1,6 +1,7 @@
 package com.kurtraschke.nyctrtproxy.tests;
 
 import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
 import com.google.transit.realtime.GtfsRealtime.*;
 import com.google.transit.realtime.GtfsRealtimeNYCT;
@@ -14,25 +15,38 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.Date;
 import java.util.List;
-import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.kurtraschke.nyctrtproxy.util.NycRealtimeUtil.*;
-import static org.junit.Assert.*;
 
-public class LazyMatchingTest extends RtTestRunner {
+public abstract class LazyMatchingTest extends RtTestRunner {
 
-  private static final String routeId = "SI";
-  private static final String filename = "11_2017-03-13.pb";
+  // copy from ProxyProvider
+  private static final Set<String> routesNeedingFixup = ImmutableSet.of("SI", "N", "Q", "R", "W", "B", "D");
+
+
+  private String routeId;
+  private String filename;
+
+  protected LazyTripMatcher ltm;
+  protected ActivatedTripMatcher atm;
+
+  public LazyMatchingTest(String routeId, String filename) {
+    this.routeId = routeId;
+    this.filename = filename;
+  }
+
+  public abstract void checkMatchResult(long timestamp, NyctTripId rtid, TripUpdateOrBuilder tripUpdate, TripMatchResult result);
 
   @Test
   public void test() throws IOException {
-    LazyTripMatcher ltm = new LazyTripMatcher();
+    ltm = new LazyTripMatcher();
     ltm.setGtfsRelationalDao(_dao);
     ltm.setCalendarServiceData(_csd);
     ltm.setLooseMatchDisabled(false);
 
-    ActivatedTripMatcher atm = new ActivatedTripMatcher();
+    atm = new ActivatedTripMatcher();
     atm.setTripActivator(_ta);
 
     FeedMessage msg = readFeedMessage(filename);
@@ -64,24 +78,18 @@ public class LazyMatchingTest extends RtTestRunner {
         for (TripUpdate tu : updates) {
           TripUpdate.Builder tub = TripUpdate.newBuilder(tu);
 
-          // SI is a route needing fixup (see ProxyProvider)
           TripDescriptor.Builder tb = tub.getTripBuilder();
           NyctTripId rtid = NyctTripId.buildFromString(tb.getTripId());
-          tb.setStartDate(fixedStartDate(tb));
-          tub.getStopTimeUpdateBuilderList().forEach(stub -> {
-            stub.setStopId(stub.getStopId() + rtid.getDirection());
-          });
-          tb.setTripId(rtid.toString());
-
-          TripMatchResult lazyTrip = ltm.match(tub, rtid, timestamp);
-          TripMatchResult activatedTrip = atm.match(tub, rtid, timestamp);
-
-          if (activatedTrip.hasResult()) {
-            String atid = activatedTrip.getResult().getTrip().getId().getId();
-            assertTrue("activated trip is present: " + atid, lazyTrip.hasResult());
-            String ltid = lazyTrip.getResult().getTrip().getId().getId();
-            assertEquals(atid, ltid);
+          if (routesNeedingFixup.contains(routeId)) {
+            tb.setStartDate(fixedStartDate(tb));
+            tub.getStopTimeUpdateBuilderList().forEach(stub -> {
+              stub.setStopId(stub.getStopId() + rtid.getDirection());
+            });
+            tb.setTripId(rtid.toString());
           }
+
+          TripMatchResult result = ltm.match(tub, rtid, timestamp);
+          checkMatchResult(timestamp, rtid, tub, result);
         }
       }
     }
