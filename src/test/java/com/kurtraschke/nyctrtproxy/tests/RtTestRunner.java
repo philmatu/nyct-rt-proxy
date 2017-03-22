@@ -62,7 +62,6 @@ public abstract class RtTestRunner {
     _tm.setCalendarServiceData(_csd);
 
     _proxyProvider = new ProxyProvider();
-    _proxyProvider.setTripActivator(_ta);
     _proxyProvider.setTripMatcher(_tm);
     CloudwatchProxyDataListener listener = new CloudwatchProxyDataListener();
     listener.init();

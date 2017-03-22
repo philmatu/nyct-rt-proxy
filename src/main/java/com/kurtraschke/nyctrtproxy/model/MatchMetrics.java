@@ -10,7 +10,7 @@ import java.util.Set;
 
 public class MatchMetrics {
 
-  private int nMatchedTrips = 0, nCancelledTrips = 0, nAddedTrips = 0;
+  private int nMatchedTrips = 0, nAddedTrips = 0;
   private int nUnmatchedNoStartDate = 0, nStrictMatch = 0, nLooseMatchSameDay = 0, nLooseMatchOtherDay = 0,
     nUnmatchedNoStopMatch = 0, nLooseMatchCoercion = 0, nDuplicates = 0;
 
@@ -52,14 +52,8 @@ public class MatchMetrics {
     }
   }
 
-  public void addCancelled() {
-    nCancelledTrips++;
-  }
-
   public Set<MetricDatum> getReportedMetrics(Dimension dim, Date timestamp) {
-    double nStatic = nMatchedTrips + nCancelledTrips;
-    double nMatchedPctOfStatic = ((double) nMatchedTrips) / nStatic;
-    double nCancelledPctOfStatic = ((double) nCancelledTrips) / nStatic;
+    //double nCancelledPctOfStatic = ((double) nCancelledTrips) / nStatic;
 
     double nRt = nMatchedTrips + nAddedTrips;
     double nMatchedRtPct = ((double) nMatchedTrips) / nRt;
@@ -74,7 +68,7 @@ public class MatchMetrics {
 
     MetricDatum dMatched = metricCount(timestamp, "MatchedTrips", nMatchedTrips, dim);
     MetricDatum dAdded = metricCount(timestamp, "AddedTrips", nAddedTrips, dim);
-    MetricDatum dCancelled = metricCount(timestamp, "CancelledTrips", nCancelledTrips, dim);
+    //MetricDatum dCancelled = metricCount(timestamp, "CancelledTrips", nCancelledTrips, dim);
     MetricDatum dUnmatchedNoStartDate = metricCount(timestamp, "UnmatchedWithoutStartDate", nUnmatchedNoStartDate, dim);
     MetricDatum dUnmatchedNoStopMatch = metricCount(timestamp, "UnmatchedNoStopMatch", nUnmatchedNoStopMatch, dim);
     MetricDatum dStrictMatch = metricCount(timestamp, "StrictMatches", nStrictMatch, dim);
@@ -83,8 +77,8 @@ public class MatchMetrics {
     MetricDatum dLooseMatchCoercion = metricCount(timestamp, "LooseMatchCoercion", nLooseMatchCoercion, dim);
     MetricDatum dDuplicateTrips = metricCount(timestamp, "DuplicateTripMatches", nDuplicates, dim);
 
-    MetricDatum dMatchedPct = metricPct(timestamp, "MatchedStaticTripsPct", nMatchedPctOfStatic, dim);
-    MetricDatum dCancelledPct = metricPct(timestamp, "CancelledStaticTripsPct", nCancelledPctOfStatic, dim);
+    //MetricDatum dMatchedPct = metricPct(timestamp, "MatchedStaticTripsPct", nMatchedPctOfStatic, dim);
+    //MetricDatum dCancelledPct = metricPct(timestamp, "CancelledStaticTripsPct", nCancelledPctOfStatic, dim);
     MetricDatum dMatchedRtPct = metricPct(timestamp, "MatchedRtTripsPct", nMatchedRtPct, dim);
     MetricDatum dAddedRtPct = metricPct(timestamp, "AddedRtTripsPct", nAddedRtPct, dim);
     MetricDatum dUnmatchedWithoutStartDatePct = metricPct(timestamp, "UnmatchedWithoutStartDatePct", nUnmatchedWithoutStartDatePct, dim);
@@ -94,7 +88,7 @@ public class MatchMetrics {
     MetricDatum dLooseMatchOtherDayPct = metricPct(timestamp, "LooseMatchOtherDayPct", nLooseMatchOtherDayPct, dim);
     MetricDatum dLooseMatchCoercionPct = metricPct(timestamp, "LooseMatchCoercionPct", nLooseMatchCoercionPct, dim);
 
-    return Sets.newHashSet(dMatched, dAdded, dCancelled, dMatchedPct, dCancelledPct, dMatchedRtPct, dAddedRtPct,
+    return Sets.newHashSet(dMatched, dAdded, dMatchedRtPct, dAddedRtPct,
             dUnmatchedNoStartDate, dStrictMatch, dLooseMatchSameDay, dLooseMatchOtherDay, dUnmatchedWithoutStartDatePct,
             dStrictMatchPct, dLooseMatchSameDayPct, dLooseMatchOtherDayPct, dUnmatchedNoStopMatch, dUnmatchedNoStopMatchPct,
             dLooseMatchCoercion, dLooseMatchCoercionPct, dDuplicateTrips);
@@ -106,10 +100,6 @@ public class MatchMetrics {
 
   public int getAddedTrips() {
     return nAddedTrips;
-  }
-
-  public int getCancelledTrips() {
-    return nCancelledTrips;
   }
 
   private static MetricDatum metricCount(Date timestamp, String name, int value, Dimension dim) {

@@ -1,5 +1,6 @@
 package com.kurtraschke.nyctrtproxy.services;
 
+import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
 import com.google.transit.realtime.GtfsRealtime.*;
@@ -8,6 +9,7 @@ import com.kurtraschke.nyctrtproxy.model.NyctTripId;
 import com.kurtraschke.nyctrtproxy.model.TripMatchResult;
 
 import javax.inject.Inject;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -53,7 +55,10 @@ public class ActivatedTripMatcher implements TripMatcher {
   }
 
   @Override
-  public void initForFeed(Multimap<String, ActivatedTrip> map) {
-    staticTripsForRoute = map;
+  public void initForFeed(Date start, Date end, Set<String> routeIds) {
+    staticTripsForRoute = ArrayListMultimap.create();
+    for (ActivatedTrip trip : _tripActivator.getTripsForRangeAndRoutes(start, end, routeIds).collect(Collectors.toList())) {
+      staticTripsForRoute.put(trip.getTrip().getRoute().getId().getId(), trip);
+    }
   }
 }

@@ -29,40 +29,40 @@ public class SanityTest extends RtTestRunner {
 
   @Test
   public void test1_2017_03_13() throws Exception {
-    test(1, "1_2017-03-13.pb", 188, 24, 28);
+    test(1, "1_2017-03-13.pb", 188, 28);
   }
 
   @Test
   public void test2_2017_03_13() throws Exception {
-    test(2, "2_2017-03-13.pb", 28, 0, 0);
+    test(2, "2_2017-03-13.pb", 28, 0);
   }
 
   @Test
   public void test11_2017_03_13() throws Exception {
-    test(11, "11_2017-03-13.pb", 8, 0, 0);
+    test(11, "11_2017-03-13.pb", 8, 0);
   }
 
   // this is specifically for testing trip coercion
   @Test
   public void test11_2017_03_21() throws Exception {
-    test(11, "11_2017-03-21.pb", 6, 0, 0);
+    test(11, "11_2017-03-21.pb", 6, 0);
   }
 
   @Test
   public void test16_2017_03_13() throws Exception {
-    test(16, "16_2017-03-13.pb", 58, 42, 44);
+    test(16, "16_2017-03-13.pb", 58, 44);
   }
 
   @Test
   public void test21_2017_03_13() throws Exception {
-    test(21, "21_2017-03-13.pb", 29, 24, 25);
+    test(21, "21_2017-03-13.pb", 29, 25);
   }
 
-  private void test(int feedId, String protobuf, int nScheduledExpected, int nCancelledExpected, int nAddedExpected) throws Exception {
+  private void test(int feedId, String protobuf, int nScheduledExpected, int nAddedExpected) throws Exception {
     FeedMessage msg = readFeedMessage(protobuf);
     List<TripUpdate> updates = _proxyProvider.processFeed(feedId, msg);
 
-    int nScheduled = 0, nCancelled = 0, nAdded = 0, nStatic = 0, nRt = 0;
+    int nScheduled = 0, nAdded = 0, nRt = 0;
 
     for (TripUpdate tripUpdate : updates) {
       switch(tripUpdate.getTrip().getScheduleRelationship()) {
@@ -70,13 +70,6 @@ public class SanityTest extends RtTestRunner {
           checkScheduledTrip(tripUpdate);
           nScheduled++;
           nRt++;
-          if (tripInRange(tripUpdate, msg) && tripOnActiveServiceDay(tripUpdate, msg.getHeader()))
-            nStatic++;
-          break;
-        case CANCELED:
-          checkCanceledTrip(tripUpdate);
-          nCancelled++;
-          nStatic++;
           break;
         case ADDED:
           checkAddedTrip(tripUpdate);
@@ -88,17 +81,15 @@ public class SanityTest extends RtTestRunner {
       }
     }
 
-    _log.info("nScheduled={}, nCancelled={}, nAdded={}", nScheduled, nCancelled, nAdded);
+    _log.info("nScheduled={}, nAdded={}", nScheduled, nAdded);
     // make sure we have improved or stayed the same
     assertTrue(nScheduled >= nScheduledExpected);
-    assertTrue(nCancelled <= nCancelledExpected);
     assertTrue(nAdded <= nAddedExpected);
 
     // if improved:
-    if (nScheduled != nScheduledExpected || nCancelled != nCancelledExpected || nAdded != nAddedExpected) {
+    if (nScheduled != nScheduledExpected || nAdded != nAddedExpected) {
       _log.info("Better than expected, could update test.");
       assertEquals("total num of RT trips changed",  nScheduledExpected + nAddedExpected, nRt);
-      //assertEquals("total num of static trips changed", nScheduledExpected + nCancelledExpected, nStatic);
     }
   }
 
@@ -138,32 +129,5 @@ public class SanityTest extends RtTestRunner {
     return staticToRealtimeRouteMap.getOrDefault(route, route);
   }
 
-  private boolean tripInRange(GtfsRealtime.TripUpdate tu, GtfsRealtime.FeedMessage msg) {
-    long time = msg.getHeader().getTimestamp();
-
-    List<GtfsRealtimeNYCT.TripReplacementPeriod> trps = msg.getHeader().getExtension(GtfsRealtimeNYCT.nyctFeedHeader).getTripReplacementPeriodList();
-    String routeId = tu.getTrip().getRouteId();
-    GtfsRealtimeNYCT.TripReplacementPeriod trp = trps.stream()
-            .filter(t -> Arrays.asList(t.getRouteId().split(",")).contains(mapRoutetoRt(routeId)))
-            .findFirst().get();
-
-    TimeRange tr = trp.getReplacementPeriod();
-    long trStart = tr.hasStart() ? tr.getStart() : time;
-
-    Trip trip = getTrip(tu);
-    List<StopTime> stopTimes = _dao.getStopTimesForTrip(trip);
-    ServiceDate sd = new ServiceDate(new Date(time * 1000));
-    long date = sd.getAsDate().getTime()/1000;
-    long tripstart = date + stopTimes.get(0).getDepartureTime();
-    long tripend = date + stopTimes.get(stopTimes.size()-1).getArrivalTime();
-    return tripstart < time && tripend > trStart;
-  }
-
-  private boolean tripOnActiveServiceDay(GtfsRealtime.TripUpdate tu, GtfsRealtime.FeedHeader header) {
-    ServiceDate sd = new ServiceDate(new Date(header.getTimestamp() * 1000));
-    Set<AgencyAndId> sids = _csd.getServiceIdsForDate(sd);
-    Trip trip = getTrip(tu);
-    return sids.contains(trip.getServiceId());
-  }
 
 }

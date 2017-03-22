@@ -1,7 +1,6 @@
 package com.kurtraschke.nyctrtproxy.services;
 
 import com.google.common.collect.Lists;
-import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 import com.google.inject.Inject;
 import com.google.transit.realtime.GtfsRealtime;
@@ -90,7 +89,7 @@ public class LazyTripMatcher implements TripMatcher {
   }
 
   @Override
-  public void initForFeed(Multimap<String, ActivatedTrip> map) {
+  public void initForFeed(Date start, Date end, Set<String> routeIds) {
     // do nothing
   }
 

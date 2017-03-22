@@ -29,7 +29,6 @@ import com.google.transit.realtime.GtfsRealtime.TripUpdate;
 import com.google.transit.realtime.GtfsRealtimeNYCT;
 import com.kurtraschke.nyctrtproxy.model.ActivatedTrip;
 import com.kurtraschke.nyctrtproxy.model.NyctTripId;
-import com.kurtraschke.nyctrtproxy.services.TripActivator;
 
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -72,8 +71,6 @@ public class ProxyProvider {
 
   private static final ExtensionRegistry _extensionRegistry;
 
-  private TripActivator _tripActivator;
-
   private GtfsRealtimeSink _tripUpdatesSink;
 
   private String _key;
@@ -103,11 +100,6 @@ public class ProxyProvider {
     _extensionRegistry.add(GtfsRealtimeNYCT.nyctFeedHeader);
     _extensionRegistry.add(GtfsRealtimeNYCT.nyctTripDescriptor);
     _extensionRegistry.add(GtfsRealtimeNYCT.nyctStopTimeUpdate);
-  }
-
-  @Inject
-  public void setTripActivator(TripActivator tripActivator) {
-    _tripActivator = tripActivator;
   }
 
   @Inject
@@ -238,16 +230,11 @@ public class ProxyProvider {
               .map(routeId -> realtimeToStaticRouteMap.getOrDefault(routeId, routeId))
               .collect(Collectors.toSet());
 
-      Multimap<String, ActivatedTrip> staticTripsForRoute = ArrayListMultimap.create();
-      for (ActivatedTrip trip : _tripActivator.getTripsForRangeAndRoutes(start, end, routeIds).collect(Collectors.toList())) {
-        staticTripsForRoute.put(trip.getTrip().getRoute().getId().getId(), trip);
-      }
-      _tripMatcher.initForFeed(staticTripsForRoute);
+      _tripMatcher.initForFeed(start, end, routeIds);
 
       Set<String> matchedTripIds = new HashSet<>();
 
       for (String routeId : routeIds) {
-        Collection<ActivatedTrip> staticTrips = staticTripsForRoute.get(routeId);
 
         MatchMetrics routeMetrics = new MatchMetrics();
 
@@ -288,27 +275,6 @@ public class ProxyProvider {
             tb.setScheduleRelationship(ScheduleRelationship.ADDED);
           }
           ret.add(tub.build());
-        }
-
-        for (ActivatedTrip at : staticTrips) {
-          if (!matchedTripIds.contains(at.getTrip().getId().getId())) {
-            long time = fm.getHeader().getTimestamp();
-            if (at.activeFor(trp, time)) {
-              TripUpdate.Builder tub = TripUpdate.newBuilder();
-              TripDescriptor.Builder tdb = tub.getTripBuilder();
-              tdb.setTripId(at.getTrip().getId().getId());
-              tdb.setRouteId(at.getTrip().getRoute().getId().getId());
-              tdb.setStartDate(at.getServiceDate().getAsString());
-              tdb.setScheduleRelationship(ScheduleRelationship.CANCELED);
-              ret.add(tub.build());
-
-              routeMetrics.addCancelled();
-              feedMetrics.addCancelled();
-            }
-            else {
-              nSkippedCancel++;
-            }
-          }
         }
 
         if (_listener != null)

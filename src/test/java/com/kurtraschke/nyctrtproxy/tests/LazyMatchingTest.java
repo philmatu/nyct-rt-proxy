@@ -13,6 +13,7 @@ import com.kurtraschke.nyctrtproxy.services.LazyTripMatcher;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
@@ -66,12 +67,7 @@ public abstract class LazyMatchingTest extends RtTestRunner {
         Date start = range.hasStart() ? new Date(range.getStart() * 1000) : earliestTripStart(updates);
         Date end = range.hasEnd() ? new Date(range.getEnd() * 1000) : new Date(msg.getHeader().getTimestamp() * 1000);
 
-        Multimap<String, ActivatedTrip> staticTripsForRoute = ArrayListMultimap.create();
-        for (ActivatedTrip trip : _ta.getTripsForRangeAndRoute(start, end, routeId).collect(Collectors.toList())) {
-          staticTripsForRoute.put(trip.getTrip().getRoute().getId().getId(), trip);
-        }
-
-        atm.initForFeed(staticTripsForRoute);
+        atm.initForFeed(start, end, Collections.singleton(routeId));
 
         long timestamp = msg.getHeader().getTimestamp();
 
