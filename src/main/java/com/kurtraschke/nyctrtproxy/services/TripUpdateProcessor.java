@@ -109,10 +109,8 @@ public class TripUpdateProcessor {
                   .getOrDefault(tb.getRouteId(), tb.getRouteId()));
 
           NyctTripId rtid = NyctTripId.buildFromString(tb.getTripId());
-          if (rtid == null)
-            continue;
 
-          if (routesNeedingFixup.contains(tb.getRouteId())) {
+          if (routesNeedingFixup.contains(tb.getRouteId()) && rtid != null) {
             tb.setStartDate(fixedStartDate(tb));
 
             tub.getStopTimeUpdateBuilderList().forEach(stub -> {

@@ -4,6 +4,7 @@ public class TripMatchResult implements Comparable<TripMatchResult> {
 
   // ordered by goodness to make comparison easier
   public enum Status {
+    BAD_TRIP_ID,
     NO_TRIP_WITH_START_DATE,
     NO_MATCH,
     LOOSE_MATCH_ON_OTHER_SERVICE_DATE,

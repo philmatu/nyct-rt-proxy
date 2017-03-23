@@ -12,7 +12,7 @@ public class MatchMetrics {
 
   private int nMatchedTrips = 0, nAddedTrips = 0;
   private int nUnmatchedNoStartDate = 0, nStrictMatch = 0, nLooseMatchSameDay = 0, nLooseMatchOtherDay = 0,
-    nUnmatchedNoStopMatch = 0, nLooseMatchCoercion = 0, nDuplicates = 0;
+    nUnmatchedNoStopMatch = 0, nLooseMatchCoercion = 0, nDuplicates = 0, nBadId = 0;
 
   private long latency = -1;
 
@@ -27,6 +27,10 @@ public class MatchMetrics {
       tripIds.add(tripId);
     }
     switch (result.getStatus()) {
+      case BAD_TRIP_ID:
+        nAddedTrips++;
+        nBadId++;
+        break;
       case NO_TRIP_WITH_START_DATE:
         nAddedTrips++;
         nUnmatchedNoStartDate++;
@@ -71,6 +75,7 @@ public class MatchMetrics {
     double nLooseMatchSameDayPct = ((double) nLooseMatchSameDay) / nRt;
     double nLooseMatchOtherDayPct = ((double) nLooseMatchOtherDay) / nRt;
     double nLooseMatchCoercionPct = ((double) nLooseMatchCoercion) / nRt;
+    double nBadIdPct = ((double) nBadId) / nRt;
 
     MetricDatum dMatched = metricCount(timestamp, "MatchedTrips", nMatchedTrips, dim);
     MetricDatum dAdded = metricCount(timestamp, "AddedTrips", nAddedTrips, dim);
@@ -82,6 +87,7 @@ public class MatchMetrics {
     MetricDatum dLooseMatchOtherDay = metricCount(timestamp, "LooseMatchesOtherDay", nLooseMatchOtherDay, dim);
     MetricDatum dLooseMatchCoercion = metricCount(timestamp, "LooseMatchCoercion", nLooseMatchCoercion, dim);
     MetricDatum dDuplicateTrips = metricCount(timestamp, "DuplicateTripMatches", nDuplicates, dim);
+    MetricDatum dBadId = metricCount(timestamp, "UnmatchedBadId", nBadId, dim);
 
     //MetricDatum dMatchedPct = metricPct(timestamp, "MatchedStaticTripsPct", nMatchedPctOfStatic, dim);
     //MetricDatum dCancelledPct = metricPct(timestamp, "CancelledStaticTripsPct", nCancelledPctOfStatic, dim);
@@ -93,11 +99,12 @@ public class MatchMetrics {
     MetricDatum dLooseMatchSameDayPct = metricPct(timestamp, "LooseMatchSameDayPct", nLooseMatchSameDayPct, dim);
     MetricDatum dLooseMatchOtherDayPct = metricPct(timestamp, "LooseMatchOtherDayPct", nLooseMatchOtherDayPct, dim);
     MetricDatum dLooseMatchCoercionPct = metricPct(timestamp, "LooseMatchCoercionPct", nLooseMatchCoercionPct, dim);
+    MetricDatum dBadIdPct = metricPct(timestamp, "UnmatchedBadIdPct", nBadIdPct, dim);
 
     Set<MetricDatum> data = Sets.newHashSet(dMatched, dAdded, dMatchedRtPct, dAddedRtPct,
             dUnmatchedNoStartDate, dStrictMatch, dLooseMatchSameDay, dLooseMatchOtherDay, dUnmatchedWithoutStartDatePct,
             dStrictMatchPct, dLooseMatchSameDayPct, dLooseMatchOtherDayPct, dUnmatchedNoStopMatch, dUnmatchedNoStopMatchPct,
-            dLooseMatchCoercion, dLooseMatchCoercionPct, dDuplicateTrips);
+            dLooseMatchCoercion, dLooseMatchCoercionPct, dDuplicateTrips, dBadId, dBadIdPct);
 
     if (latency >= 0) {
       MetricDatum dLatency = new MetricDatum().withMetricName("Latency")

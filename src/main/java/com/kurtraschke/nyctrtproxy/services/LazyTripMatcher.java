@@ -50,6 +50,8 @@ public class LazyTripMatcher implements TripMatcher {
 
   @Override
   public TripMatchResult match(GtfsRealtime.TripUpdateOrBuilder tu, NyctTripId id, long timestamp) {
+    if (id == null)
+      return new TripMatchResult(TripMatchResult.Status.BAD_TRIP_ID);
     // why did we not find a trip:
     TripMatchResult.Status notFoundStatus = TripMatchResult.Status.NO_TRIP_WITH_START_DATE;
 
