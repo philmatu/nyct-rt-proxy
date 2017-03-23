@@ -45,6 +45,12 @@ public class SanityTest extends RtTestRunner {
     test(21, "21_2017-03-13.pb", 29, 25);
   }
 
+  // Test overnight service
+  @Test
+  public void test11_midnight() throws Exception {
+    test(11, "11_2017-03-23_00:33.pb", 5, 0);
+  }
+
   private void test(int feedId, String protobuf, int nScheduledExpected, int nAddedExpected) throws Exception {
     FeedMessage msg = readFeedMessage(protobuf);
     List<TripUpdate> updates = _processor.processFeed(feedId, msg);

@@ -21,16 +21,11 @@ import java.util.regex.Pattern;
  */
 public class NyctTripId {
 
-  private final String timetable;
-  private final int originDepartureTime;
-  private final String pathId;
+  private int originDepartureTime;
+  private String pathId;
   private String directionId;
   private String routeId;
   private String networkId;
-
-  public String getTimetable() {
-    return timetable;
-  }
 
   public int getOriginDepartureTime() {
     return originDepartureTime;
@@ -77,7 +72,7 @@ public class NyctTripId {
       networkId = matcher.group("network");
       if (networkId.length() == 0)
         networkId = null;
-      return new NyctTripId(null, originDepartureTime, pathId, routeId, directionId, networkId);
+      return new NyctTripId(originDepartureTime, pathId, routeId, directionId, networkId);
 
     } else {
       return null;
@@ -85,8 +80,7 @@ public class NyctTripId {
 
   }
 
-  private NyctTripId(String timetable, int originDepartureTime, String pathId, String routeId, String directionId, String networkId) {
-    this.timetable = timetable;
+  private NyctTripId(int originDepartureTime, String pathId, String routeId, String directionId, String networkId) {
     this.originDepartureTime = originDepartureTime;
     this.pathId = pathId;
     this.routeId = routeId;
@@ -94,15 +88,11 @@ public class NyctTripId {
     this.networkId = networkId;
   }
 
-  private boolean hasTimetable() {
-    return this.timetable != null;
-  }
-
   @Override
   public String toString() {
     Joiner joiner = Joiner.on("_").skipNulls();
 
-    return joiner.join(timetable, originDepartureTime, pathId);
+    return joiner.join(originDepartureTime, pathId);
   }
 
   public boolean strictMatch(NyctTripId other) {
@@ -118,5 +108,10 @@ public class NyctTripId {
   public boolean routeDirMatch(NyctTripId other) {
     return getRouteId().equals(other.getRouteId())
             && getDirection().equals(other.getDirection());
+  }
+
+  public NyctTripId relativeToPreviousDay() {
+    int time = originDepartureTime + (24 * 60 * 100);
+    return new NyctTripId(time, pathId, routeId, directionId, networkId);
   }
 }
