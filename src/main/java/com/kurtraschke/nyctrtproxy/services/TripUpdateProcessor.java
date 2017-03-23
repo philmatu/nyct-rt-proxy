@@ -15,6 +15,7 @@ import com.kurtraschke.nyctrtproxy.model.TripMatchResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Named;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -38,9 +39,18 @@ public class TripUpdateProcessor {
 
   private static final Map<Integer, Map<String, String>> realtimeToStaticRouteMapByFeed = ImmutableMap.of(1, ImmutableMap.of("S", "GS"));
 
+  private int _latencyLimit = -1;
+
   private ProxyDataListener _listener;
 
   private TripMatcher _tripMatcher;
+
+  // config
+  @Inject(optional = true)
+  public void setLatencyLimit(@Named("NYCT.latencyLimit") int limit) {
+    _latencyLimit = limit;
+  }
+
 
   @Inject(optional = true)
   public void setListener(ProxyDataListener listener) {
@@ -53,6 +63,16 @@ public class TripUpdateProcessor {
   }
 
   public List<GtfsRealtime.TripUpdate> processFeed(Integer feedId, GtfsRealtime.FeedMessage fm) {
+
+    MatchMetrics feedMetrics = new MatchMetrics();
+    feedMetrics.reportLatency(fm.getHeader().getTimestamp());
+
+    if (_latencyLimit > 0 && feedMetrics.getLatency() > _latencyLimit) {
+      _log.info("Feed {} ignored, too high latency = {}", feedId, feedMetrics.getLatency());
+      if (_listener != null)
+        _listener.reportMatchesForFeed(feedId.toString(), feedMetrics);
+      return Collections.emptyList();
+    }
 
     final Map<String, String> realtimeToStaticRouteMap = realtimeToStaticRouteMapByFeed
             .getOrDefault(feedId, Collections.emptyMap());
@@ -75,10 +95,6 @@ public class TripUpdateProcessor {
     }
 
     List<GtfsRealtime.TripUpdate> ret = Lists.newArrayList();
-
-    MatchMetrics feedMetrics = new MatchMetrics();
-    feedMetrics.reportLatency(fm.getHeader().getTimestamp());
-    long nSkippedCancel = 0;
 
     for (GtfsRealtimeNYCT.TripReplacementPeriod trp : fm.getHeader()
             .getExtension(GtfsRealtimeNYCT.nyctFeedHeader)
@@ -144,7 +160,7 @@ public class TripUpdateProcessor {
     if (_listener != null)
       _listener.reportMatchesForFeed(feedId.toString(), feedMetrics);
 
-    _log.info("feed={}, skipped cancel={}, expired TUs={}", feedId, nSkippedCancel, nExpiredTus);
+    _log.info("feed={}, expired TUs={}", feedId, nExpiredTus);
     return ret;
   }
 

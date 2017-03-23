@@ -62,7 +62,30 @@ public class MatchMetrics {
     latency = (new Date().getTime()/1000) - timestamp;
   }
 
+  public long getLatency() {
+    return latency;
+  }
+
   public Set<MetricDatum> getReportedMetrics(Dimension dim, Date timestamp) {
+
+    Set<MetricDatum> data = Sets.newHashSet();
+
+    if (latency >= 0) {
+      MetricDatum dLatency = new MetricDatum().withMetricName("Latency")
+              .withTimestamp(timestamp)
+              .withValue((double) latency)
+              .withUnit(StandardUnit.Seconds)
+              .withDimensions(dim);
+      data.add(dLatency);
+    }
+
+    if (nMatchedTrips + nAddedTrips > 0)
+      data.addAll(getMatchMetrics(dim, timestamp));
+
+    return data;
+  }
+
+  private Set<MetricDatum> getMatchMetrics(Dimension dim, Date timestamp) {
     //double nCancelledPctOfStatic = ((double) nCancelledTrips) / nStatic;
 
     double nRt = nMatchedTrips + nAddedTrips;
@@ -101,21 +124,10 @@ public class MatchMetrics {
     MetricDatum dLooseMatchCoercionPct = metricPct(timestamp, "LooseMatchCoercionPct", nLooseMatchCoercionPct, dim);
     MetricDatum dBadIdPct = metricPct(timestamp, "UnmatchedBadIdPct", nBadIdPct, dim);
 
-    Set<MetricDatum> data = Sets.newHashSet(dMatched, dAdded, dMatchedRtPct, dAddedRtPct,
+    return Sets.newHashSet(dMatched, dAdded, dMatchedRtPct, dAddedRtPct,
             dUnmatchedNoStartDate, dStrictMatch, dLooseMatchSameDay, dLooseMatchOtherDay, dUnmatchedWithoutStartDatePct,
             dStrictMatchPct, dLooseMatchSameDayPct, dLooseMatchOtherDayPct, dUnmatchedNoStopMatch, dUnmatchedNoStopMatchPct,
             dLooseMatchCoercion, dLooseMatchCoercionPct, dDuplicateTrips, dBadId, dBadIdPct);
-
-    if (latency >= 0) {
-      MetricDatum dLatency = new MetricDatum().withMetricName("Latency")
-              .withTimestamp(timestamp)
-              .withValue((double) latency)
-              .withUnit(StandardUnit.Seconds)
-              .withDimensions(dim);
-      data.add(dLatency);
-    }
-
-    return data;
   }
 
   public int getMatchedTrips() {

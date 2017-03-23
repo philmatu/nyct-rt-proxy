@@ -94,8 +94,8 @@ public class ProxyProvider {
   }
 
   @Inject(optional = true)
-  public void setNTries(@Named("NYCT.nTries") String nTries) {
-    _nTries = Integer.parseInt(nTries);
+  public void setNTries(@Named("NYCT.nTries") int nTries) {
+    _nTries = nTries;
   }
 
   @Inject
