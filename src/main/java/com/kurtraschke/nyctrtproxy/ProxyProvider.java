@@ -214,6 +214,7 @@ public class ProxyProvider {
     List<TripUpdate> ret = Lists.newArrayList();
 
     MatchMetrics feedMetrics = new MatchMetrics();
+    feedMetrics.reportLatency(fm.getHeader().getTimestamp());
     long nSkippedCancel = 0;
 
     for (GtfsRealtimeNYCT.TripReplacementPeriod trp : fm.getHeader()
@@ -232,8 +233,6 @@ public class ProxyProvider {
 
       _tripMatcher.initForFeed(start, end, routeIds);
 
-      Set<String> matchedTripIds = new HashSet<>();
-
       for (String routeId : routeIds) {
 
         MatchMetrics routeMetrics = new MatchMetrics();
@@ -247,7 +246,6 @@ public class ProxyProvider {
                   .getOrDefault(tb.getRouteId(), tb.getRouteId()));
 
           NyctTripId rtid = NyctTripId.buildFromString(tb.getTripId());
-
 
           if (routesNeedingFixup.contains(tb.getRouteId())) {
             tb.setStartDate(fixedStartDate(tb));
@@ -266,8 +264,6 @@ public class ProxyProvider {
           if (result.getResult() != null) {
             ActivatedTrip at = result.getResult();
             String staticTripId = at.getTrip().getId().getId();
-            _log.info("matched {} to {}", tub.getTrip().getTripId(), at.getTrip());
-            matchedTripIds.add(staticTripId);
             tb.setTripId(staticTripId);
             removeTimepoints(at, tub);
           } else {

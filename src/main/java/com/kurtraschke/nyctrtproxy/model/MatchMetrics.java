@@ -14,6 +14,8 @@ public class MatchMetrics {
   private int nUnmatchedNoStartDate = 0, nStrictMatch = 0, nLooseMatchSameDay = 0, nLooseMatchOtherDay = 0,
     nUnmatchedNoStopMatch = 0, nLooseMatchCoercion = 0, nDuplicates = 0;
 
+  private long latency = -1;
+
   Set<String> tripIds = Sets.newHashSet();
 
   public void add(TripMatchResult result) {
@@ -52,6 +54,10 @@ public class MatchMetrics {
     }
   }
 
+  public void reportLatency(long timestamp) {
+    latency = (new Date().getTime()/1000) - timestamp;
+  }
+
   public Set<MetricDatum> getReportedMetrics(Dimension dim, Date timestamp) {
     //double nCancelledPctOfStatic = ((double) nCancelledTrips) / nStatic;
 
@@ -88,10 +94,21 @@ public class MatchMetrics {
     MetricDatum dLooseMatchOtherDayPct = metricPct(timestamp, "LooseMatchOtherDayPct", nLooseMatchOtherDayPct, dim);
     MetricDatum dLooseMatchCoercionPct = metricPct(timestamp, "LooseMatchCoercionPct", nLooseMatchCoercionPct, dim);
 
-    return Sets.newHashSet(dMatched, dAdded, dMatchedRtPct, dAddedRtPct,
+    Set<MetricDatum> data = Sets.newHashSet(dMatched, dAdded, dMatchedRtPct, dAddedRtPct,
             dUnmatchedNoStartDate, dStrictMatch, dLooseMatchSameDay, dLooseMatchOtherDay, dUnmatchedWithoutStartDatePct,
             dStrictMatchPct, dLooseMatchSameDayPct, dLooseMatchOtherDayPct, dUnmatchedNoStopMatch, dUnmatchedNoStopMatchPct,
             dLooseMatchCoercion, dLooseMatchCoercionPct, dDuplicateTrips);
+
+    if (latency >= 0) {
+      MetricDatum dLatency = new MetricDatum().withMetricName("Latency")
+              .withTimestamp(timestamp)
+              .withValue((double) latency)
+              .withUnit(StandardUnit.Seconds)
+              .withDimensions(dim);
+      data.add(dLatency);
+    }
+
+    return data;
   }
 
   public int getMatchedTrips() {

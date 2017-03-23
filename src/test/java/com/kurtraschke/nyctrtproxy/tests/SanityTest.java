@@ -112,21 +112,9 @@ public class SanityTest extends RtTestRunner {
 
   }
 
-  private void checkCanceledTrip(TripUpdate tripUpdate) {
-    Trip trip = getTrip(tripUpdate);
-    _log.info("cancelled: {}", trip);
-    assertNotNull(trip);
-    assertEquals(tripUpdate.getTrip().getRouteId(), trip.getRoute().getId().getId());
-  }
-
   private void checkAddedTrip(TripUpdate tripUpdate) {
     Trip trip = getTrip(tripUpdate);
     assertNull(trip);
-  }
-
-  private static final Map<String, String> staticToRealtimeRouteMap = ImmutableMap.of("GS", "S");
-  private static String mapRoutetoRt(String route) {
-    return staticToRealtimeRouteMap.getOrDefault(route, route);
   }
 
 

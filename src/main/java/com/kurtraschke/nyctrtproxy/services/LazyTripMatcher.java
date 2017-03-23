@@ -136,7 +136,6 @@ public class LazyTripMatcher implements TripMatcher {
       for (int i = 0; i < sequences.size() - 1; i++)
         for (StopTimeUpdate stu : sequences.get(i))
           extras.add(stu.getStopId());
-      _log.warn("For trip {} extra stops {}", trip, extras);
     }
 
     // last stop ID is last STU: collections are exhausted at the same time
