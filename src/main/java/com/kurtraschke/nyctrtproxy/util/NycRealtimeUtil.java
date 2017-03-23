@@ -27,7 +27,8 @@ public class NycRealtimeUtil {
 
   public static Date earliestTripStart(Collection<GtfsRealtime.TripUpdate> updates) {
     OptionalLong time = updates.stream()
-            .mapToLong(NycRealtimeUtil::tripUpdateStart).min();
+            .mapToLong(NycRealtimeUtil::tripUpdateStart)
+            .filter(n -> n > 0).min();
     return time.isPresent() ? new Date(time.getAsLong()) : null;
   }
 
@@ -35,6 +36,8 @@ public class NycRealtimeUtil {
   private static long tripUpdateStart(GtfsRealtime.TripUpdate tu) {
     GtfsRealtime.TripDescriptor td = tu.getTrip();
     NyctTripId rtid = NyctTripId.buildFromString(td.getTripId());
+    if (rtid == null)
+      return -1;
     int minHds = rtid.getOriginDepartureTime();
     String startDate = routesNeedingFixup.contains(td.getRouteId()) ? fixedStartDate(td) : td.getStartDate();
     ServiceDate sd;

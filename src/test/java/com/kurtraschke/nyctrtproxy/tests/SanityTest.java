@@ -1,25 +1,12 @@
 package com.kurtraschke.nyctrtproxy.tests;
 
-import com.google.common.collect.ImmutableMap;
-import com.google.transit.realtime.GtfsRealtime;
 import com.google.transit.realtime.GtfsRealtime.*;
-import com.google.transit.realtime.GtfsRealtimeNYCT;
-import com.kurtraschke.nyctrtproxy.services.ActivatedTripMatcher;
 import org.junit.Test;
-import org.onebusaway.gtfs.model.AgencyAndId;
-import org.onebusaway.gtfs.model.StopTime;
 import org.onebusaway.gtfs.model.Trip;
-import org.onebusaway.gtfs.model.calendar.ServiceDate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
-import java.util.Calendar;
-import java.util.Date;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
 
 import static org.junit.Assert.*;
 
@@ -60,7 +47,7 @@ public class SanityTest extends RtTestRunner {
 
   private void test(int feedId, String protobuf, int nScheduledExpected, int nAddedExpected) throws Exception {
     FeedMessage msg = readFeedMessage(protobuf);
-    List<TripUpdate> updates = _proxyProvider.processFeed(feedId, msg);
+    List<TripUpdate> updates = _processor.processFeed(feedId, msg);
 
     int nScheduled = 0, nAdded = 0, nRt = 0;
 

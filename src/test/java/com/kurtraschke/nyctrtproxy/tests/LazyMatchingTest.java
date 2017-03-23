@@ -1,11 +1,8 @@
 package com.kurtraschke.nyctrtproxy.tests;
 
-import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Multimap;
 import com.google.transit.realtime.GtfsRealtime.*;
 import com.google.transit.realtime.GtfsRealtimeNYCT;
-import com.kurtraschke.nyctrtproxy.model.ActivatedTrip;
 import com.kurtraschke.nyctrtproxy.model.NyctTripId;
 import com.kurtraschke.nyctrtproxy.model.TripMatchResult;
 import com.kurtraschke.nyctrtproxy.services.ActivatedTripMatcher;

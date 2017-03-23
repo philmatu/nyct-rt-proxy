@@ -3,10 +3,10 @@ package com.kurtraschke.nyctrtproxy.tests;
 import com.google.protobuf.ExtensionRegistry;
 import com.google.transit.realtime.GtfsRealtime;
 import com.google.transit.realtime.GtfsRealtimeNYCT;
-import com.kurtraschke.nyctrtproxy.ProxyProvider;
 import com.kurtraschke.nyctrtproxy.services.CloudwatchProxyDataListener;
 import com.kurtraschke.nyctrtproxy.services.LazyTripMatcher;
 import com.kurtraschke.nyctrtproxy.services.TripActivator;
+import com.kurtraschke.nyctrtproxy.services.TripUpdateProcessor;
 import junit.framework.TestCase;
 import org.junit.BeforeClass;
 import org.onebusaway.gtfs.impl.GtfsRelationalDaoImpl;
@@ -14,20 +14,16 @@ import org.onebusaway.gtfs.impl.calendar.CalendarServiceDataFactoryImpl;
 import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.gtfs.model.Trip;
 import org.onebusaway.gtfs.model.calendar.CalendarServiceData;
-import org.onebusaway.gtfs.model.calendar.ServiceDate;
 import org.onebusaway.gtfs.serialization.GtfsReader;
 import org.onebusaway.gtfs.services.calendar.CalendarServiceDataFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Date;
-import java.util.List;
-import java.util.Set;
 
 public abstract class RtTestRunner {
 
-  protected static ProxyProvider _proxyProvider;
+  protected static TripUpdateProcessor _processor;
   protected static CalendarServiceData _csd;
   protected static ExtensionRegistry _extensionRegistry;
   protected static GtfsRelationalDaoImpl _dao;
@@ -61,11 +57,11 @@ public abstract class RtTestRunner {
     _tm.setGtfsRelationalDao(_dao);
     _tm.setCalendarServiceData(_csd);
 
-    _proxyProvider = new ProxyProvider();
-    _proxyProvider.setTripMatcher(_tm);
+    _processor = new TripUpdateProcessor();
+    _processor.setTripMatcher(_tm);
     CloudwatchProxyDataListener listener = new CloudwatchProxyDataListener();
     listener.init();
-    _proxyProvider.setListener(listener);
+    _processor.setListener(listener);
 
     _extensionRegistry = ExtensionRegistry.newInstance();
     _extensionRegistry.add(GtfsRealtimeNYCT.nyctFeedHeader);

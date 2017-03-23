@@ -80,7 +80,7 @@ public class NyctTripId {
       return new NyctTripId(null, originDepartureTime, pathId, routeId, directionId, networkId);
 
     } else {
-      throw new IllegalArgumentException();
+      return null;
     }
 
   }
