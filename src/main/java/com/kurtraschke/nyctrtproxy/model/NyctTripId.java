@@ -80,6 +80,12 @@ public class NyctTripId {
 
   }
 
+  public static NyctTripId buildFromTrip(Trip trip) {
+    NyctTripId id = buildFromString(trip.getId().getId());
+    id.routeId = trip.getRoute().getId().getId();
+    return id;
+  }
+
   private NyctTripId(int originDepartureTime, String pathId, String routeId, String directionId, String networkId) {
     this.originDepartureTime = originDepartureTime;
     this.pathId = pathId;

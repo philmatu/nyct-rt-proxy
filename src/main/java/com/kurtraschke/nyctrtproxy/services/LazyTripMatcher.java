@@ -133,7 +133,7 @@ public class LazyTripMatcher implements TripMatcher {
     Set<AgencyAndId> serviceIds = _csd.getServiceIdsForDate(sd);
 
     for (Trip trip : _dao.getTripsForRoute(r)) {
-      NyctTripId atid = NyctTripId.buildFromString(trip.getId().getId());
+      NyctTripId atid = NyctTripId.buildFromTrip(trip);
       if (!atid.routeDirMatch(id))
         continue;
       List<StopTime> stopTimes = _dao.getStopTimesForTrip(trip);

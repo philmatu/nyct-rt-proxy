@@ -146,7 +146,7 @@ public class TripUpdateProcessor {
             tb.setTripId(staticTripId);
             removeTimepoints(at, tub);
           } else {
-            _log.info("unmatched: {}", tub.getTrip().getTripId());
+            _log.info("unmatched: {} due to {}", tub.getTrip().getTripId(), result.getStatus());
             tb.setScheduleRelationship(GtfsRealtime.TripDescriptor.ScheduleRelationship.ADDED);
           }
           ret.add(tub.build());
