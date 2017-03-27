@@ -103,6 +103,7 @@ public class MatchMetrics {
     double nLooseMatchOtherDayPct = ((double) nLooseMatchOtherDay) / nRt;
     double nLooseMatchCoercionPct = ((double) nLooseMatchCoercion) / nRt;
     double nBadIdPct = ((double) nBadId) / nRt;
+    double nMergedPct = ((double) nMergedTrips) / nRt;
 
     MetricDatum dMatched = metricCount(timestamp, "MatchedTrips", nMatchedTrips, dim);
     MetricDatum dAdded = metricCount(timestamp, "AddedTrips", nAddedTrips, dim);
@@ -115,6 +116,8 @@ public class MatchMetrics {
     MetricDatum dLooseMatchCoercion = metricCount(timestamp, "LooseMatchCoercion", nLooseMatchCoercion, dim);
     MetricDatum dDuplicateTrips = metricCount(timestamp, "DuplicateTripMatches", nDuplicates, dim);
     MetricDatum dBadId = metricCount(timestamp, "UnmatchedBadId", nBadId, dim);
+    MetricDatum dMerged = metricCount(timestamp, "MergedTrips", nMergedTrips, dim);
+
 
     //MetricDatum dMatchedPct = metricPct(timestamp, "MatchedStaticTripsPct", nMatchedPctOfStatic, dim);
     //MetricDatum dCancelledPct = metricPct(timestamp, "CancelledStaticTripsPct", nCancelledPctOfStatic, dim);
@@ -127,11 +130,12 @@ public class MatchMetrics {
     MetricDatum dLooseMatchOtherDayPct = metricPct(timestamp, "LooseMatchOtherDayPct", nLooseMatchOtherDayPct, dim);
     MetricDatum dLooseMatchCoercionPct = metricPct(timestamp, "LooseMatchCoercionPct", nLooseMatchCoercionPct, dim);
     MetricDatum dBadIdPct = metricPct(timestamp, "UnmatchedBadIdPct", nBadIdPct, dim);
+    MetricDatum dMergedPct = metricPct(timestamp, "MergedTripsPct", nMergedPct, dim);
 
     return Sets.newHashSet(dMatched, dAdded, dMatchedRtPct, dAddedRtPct,
             dUnmatchedNoStartDate, dStrictMatch, dLooseMatchSameDay, dLooseMatchOtherDay, dUnmatchedWithoutStartDatePct,
             dStrictMatchPct, dLooseMatchSameDayPct, dLooseMatchOtherDayPct, dUnmatchedNoStopMatch, dUnmatchedNoStopMatchPct,
-            dLooseMatchCoercion, dLooseMatchCoercionPct, dDuplicateTrips, dBadId, dBadIdPct);
+            dLooseMatchCoercion, dLooseMatchCoercionPct, dDuplicateTrips, dBadId, dBadIdPct, dMerged, dMergedPct);
   }
 
   public int getMatchedTrips() {
