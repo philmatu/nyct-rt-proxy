@@ -5,13 +5,9 @@
  */
 package com.kurtraschke.nyctrtproxy.model;
 
-import com.google.common.base.Joiner;
-
 import org.apache.commons.lang3.StringUtils;
 import org.onebusaway.gtfs.model.Trip;
 
-import java.util.ArrayDeque;
-import java.util.Arrays;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -96,9 +92,7 @@ public class NyctTripId {
 
   @Override
   public String toString() {
-    Joiner joiner = Joiner.on("_").skipNulls();
-
-    return joiner.join(originDepartureTime, pathId);
+    return String.format("%06d_%s", originDepartureTime, pathId);
   }
 
   public boolean strictMatch(NyctTripId other) {

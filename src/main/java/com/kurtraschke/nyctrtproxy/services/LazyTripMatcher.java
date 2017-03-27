@@ -72,6 +72,13 @@ public class LazyTripMatcher implements TripMatcher {
     // do nothing
   }
 
+  public boolean tripMatch(TripMatchResult result) {
+    Trip trip = result.getResult().getTrip();
+    List<StopTimeUpdate> stus = result.getTripUpdate().getStopTimeUpdateList();
+    List<StopTime> stopTimes = result.getResult().getStopTimes();
+    return tripMatch(trip, stus, stopTimes);
+  }
+
   private boolean tripMatch(Trip trip, List<StopTimeUpdate> stusWithTimepoints, List<StopTime> stopTimes) {
     List<String> stops = stopTimes.stream().map(s -> s.getStop().getId().getId()).collect(Collectors.toList());
     List<StopTimeUpdate> stus = stusWithTimepoints.stream()
@@ -150,13 +157,13 @@ public class LazyTripMatcher implements TripMatcher {
       if (!_looseMatchDisabled && delta >= 0 && delta < LATE_TRIP_LIMIT_SEC) {
         found = true;
         List<GtfsRealtime.TripUpdate.StopTimeUpdate> stus = tu.getStopTimeUpdateList();
-        if (tripMatch(trip, stus, stopTimes)) {
-          ActivatedTrip at = new ActivatedTrip(sd, trip, start, end, stopTimes);
-          TripMatchResult result = TripMatchResult.looseMatch(at, delta, onServiceDay);
-          // disable trips that are coerced AND on a different day
-          if (onServiceDay || delta == 0)
-            candidates.add(result);
-        }
+
+        ActivatedTrip at = new ActivatedTrip(sd, trip, start, end, stopTimes);
+        TripMatchResult result = TripMatchResult.looseMatch(at, delta, onServiceDay);
+        // disable trips that are coerced AND on a different day
+        if (onServiceDay || delta == 0)
+          candidates.add(result);
+
       }
     }
 

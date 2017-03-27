@@ -82,7 +82,8 @@ public class SanityTest extends RtTestRunner {
     // if improved:
     if (nScheduled != nScheduledExpected || nAdded != nAddedExpected) {
       _log.info("Better than expected, could update test.");
-      assertEquals("total num of RT trips changed",  nScheduledExpected + nAddedExpected, nRt);
+      if (feedId != 21) // feed 21 includes merged trips
+        assertEquals("total num of RT trips changed",  nScheduledExpected + nAddedExpected, nRt);
     }
   }
 

@@ -5,8 +5,10 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
+import com.google.common.collect.Sets;
 import com.google.inject.Inject;
 import com.google.transit.realtime.GtfsRealtime;
+import com.google.transit.realtime.GtfsRealtime.TripUpdate.StopTimeUpdate;
 import com.google.transit.realtime.GtfsRealtimeNYCT;
 import com.kurtraschke.nyctrtproxy.model.ActivatedTrip;
 import com.kurtraschke.nyctrtproxy.model.MatchMetrics;
@@ -20,10 +22,14 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.kurtraschke.nyctrtproxy.util.NycRealtimeUtil.earliestTripStart;
@@ -116,6 +122,7 @@ public class TripUpdateProcessor {
 
         MatchMetrics routeMetrics = new MatchMetrics();
 
+        Multimap<String, TripMatchResult> matchesByTrip = ArrayListMultimap.create();
         Collection<GtfsRealtime.TripUpdate> tripUpdates = tripUpdatesByRoute.get(routeId);
         for (GtfsRealtime.TripUpdate tu : tripUpdates) {
           GtfsRealtime.TripUpdate.Builder tub = GtfsRealtime.TripUpdate.newBuilder(tu);
@@ -137,19 +144,37 @@ public class TripUpdateProcessor {
           }
 
           TripMatchResult result = _tripMatcher.match(tub, rtid, fm.getHeader().getTimestamp());
+          result.setTripUpdate(tub);
+          String tripId = result.hasResult() ? result.getResult().getTrip().getId().getId() : tb.getTripId();
+          matchesByTrip.put(tripId, result);
+        }
+
+        for (Collection<TripMatchResult> matches : matchesByTrip.asMap().values())
+          tryMergeResult(matches);
+
+        for (TripMatchResult result : matchesByTrip.values()) {
+          if (!result.getStatus().equals(TripMatchResult.Status.MERGED)) {
+            if (_tripMatcher instanceof LazyTripMatcher && result.hasResult() && !((LazyTripMatcher) _tripMatcher).tripMatch(result)) {
+              _log.info("no stop match rt={} static={}", result.getTripUpdate().getTrip().getTripId(), result.getResult().getTrip().getId().getId());
+              result.setStatus(TripMatchResult.Status.NO_MATCH);
+              result.setResult(null);
+            }
+            GtfsRealtime.TripUpdate.Builder tub = result.getTripUpdate();
+            GtfsRealtime.TripDescriptor.Builder tb = tub.getTripBuilder();
+            if (result.getResult() != null) {
+              ActivatedTrip at = result.getResult();
+              String staticTripId = at.getTrip().getId().getId();
+              tb.setTripId(staticTripId);
+              removeTimepoints(at, tub);
+            } else {
+              _log.info("unmatched: {} due to {}", tub.getTrip().getTripId(), result.getStatus());
+              tb.setScheduleRelationship(GtfsRealtime.TripDescriptor.ScheduleRelationship.ADDED);
+            }
+            ret.add(tub.build());
+          }
+
           routeMetrics.add(result);
           feedMetrics.add(result);
-
-          if (result.getResult() != null) {
-            ActivatedTrip at = result.getResult();
-            String staticTripId = at.getTrip().getId().getId();
-            tb.setTripId(staticTripId);
-            removeTimepoints(at, tub);
-          } else {
-            _log.info("unmatched: {} due to {}", tub.getTrip().getTripId(), result.getStatus());
-            tb.setScheduleRelationship(GtfsRealtime.TripDescriptor.ScheduleRelationship.ADDED);
-          }
-          ret.add(tub.build());
         }
 
         if (_listener != null)
@@ -183,5 +208,47 @@ public class TripUpdateProcessor {
         i--;
       }
     }
+  }
+
+
+  private void tryMergeResult(Collection<TripMatchResult> col) {
+    if (col.size() != 2)
+      return;
+    Iterator<TripMatchResult> iter = col.iterator();
+    mergedResult(iter.next(), iter.next());
+  }
+
+  private TripMatchResult mergedResult(TripMatchResult first, TripMatchResult second) {
+    NyctTripId firstId = NyctTripId.buildFromString(first.getTripUpdate().getTrip().getTripId());
+    NyctTripId secondId = NyctTripId.buildFromString(second.getTripUpdate().getTrip().getTripId());
+    if (firstId.getOriginDepartureTime() > secondId.getOriginDepartureTime())
+      return mergedResult(second, first);
+
+    String midpt0 = getReliefPoint(first.getTripUpdate(), 1);
+    String midpt1 = getReliefPoint(second.getTripUpdate(), 0);
+    if (midpt0 != null && midpt0.equals(midpt1)) {
+      Iterator<StopTimeUpdate.Builder> stusToAdd = second.getTripUpdate().getStopTimeUpdateBuilderList().iterator();
+      GtfsRealtime.TripUpdate.Builder update = first.getTripUpdate();
+      StopTimeUpdate.Builder stu1 = stusToAdd.next();
+      StopTimeUpdate.Builder stu0 = update.getStopTimeUpdateBuilder(update.getStopTimeUpdateCount() - 1);
+      if (stu1.getStopId().equals(stu0.getStopId())) {
+        stu0.setDeparture(stu1.getDeparture());
+        while (stusToAdd.hasNext()) {
+          update.addStopTimeUpdate(stusToAdd.next());
+        }
+        second.setStatus(TripMatchResult.Status.MERGED);
+        return first;
+      }
+    }
+
+    return null;
+  }
+
+  private static String getReliefPoint(GtfsRealtime.TripUpdateOrBuilder update, int pt) {
+    String trainId = update.getTrip().getExtension(GtfsRealtimeNYCT.nyctTripDescriptor).getTrainId();
+    String[] tokens = trainId.split(" ");
+    String relief = tokens[tokens.length - 1];
+    String[] points = relief.split("/");
+    return points[pt];
   }
 }

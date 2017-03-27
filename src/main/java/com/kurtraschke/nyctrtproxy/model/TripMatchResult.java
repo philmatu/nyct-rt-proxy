@@ -1,5 +1,7 @@
 package com.kurtraschke.nyctrtproxy.model;
 
+import com.google.transit.realtime.GtfsRealtime;
+
 public class TripMatchResult implements Comparable<TripMatchResult> {
 
   // ordered by goodness to make comparison easier
@@ -7,6 +9,7 @@ public class TripMatchResult implements Comparable<TripMatchResult> {
     BAD_TRIP_ID,
     NO_TRIP_WITH_START_DATE,
     NO_MATCH,
+    MERGED,
     LOOSE_MATCH_ON_OTHER_SERVICE_DATE,
     LOOSE_MATCH_COERCION,
     LOOSE_MATCH,
@@ -16,6 +19,7 @@ public class TripMatchResult implements Comparable<TripMatchResult> {
   private Status status;
   private ActivatedTrip result;
   private int delta; // lateness of RT trip relative to static trip
+  private GtfsRealtime.TripUpdate.Builder tripUpdate;
 
   public TripMatchResult(Status status, ActivatedTrip result, int delta) {
     this.status = status;
@@ -69,6 +73,14 @@ public class TripMatchResult implements Comparable<TripMatchResult> {
     if (!onServiceDay)
       status = Status.LOOSE_MATCH_ON_OTHER_SERVICE_DATE;
     return new TripMatchResult(status, at, delta);
+  }
+
+  public GtfsRealtime.TripUpdate.Builder getTripUpdate() {
+    return tripUpdate;
+  }
+
+  public void setTripUpdate(GtfsRealtime.TripUpdate.Builder tripUpdate) {
+    this.tripUpdate = tripUpdate;
   }
 
 }

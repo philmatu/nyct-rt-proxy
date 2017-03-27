@@ -12,7 +12,7 @@ public class MatchMetrics {
 
   private int nMatchedTrips = 0, nAddedTrips = 0;
   private int nUnmatchedNoStartDate = 0, nStrictMatch = 0, nLooseMatchSameDay = 0, nLooseMatchOtherDay = 0,
-    nUnmatchedNoStopMatch = 0, nLooseMatchCoercion = 0, nDuplicates = 0, nBadId = 0;
+    nUnmatchedNoStopMatch = 0, nLooseMatchCoercion = 0, nDuplicates = 0, nBadId = 0, nMergedTrips = 0;
 
   private long latency = -1;
 
@@ -54,6 +54,10 @@ public class MatchMetrics {
       case LOOSE_MATCH_COERCION:
         nMatchedTrips++;
         nLooseMatchCoercion++;
+        break;
+      case MERGED:
+        nMatchedTrips++;
+        nMergedTrips++;
         break;
     }
   }
@@ -140,6 +144,10 @@ public class MatchMetrics {
 
   public int getDuplicates() {
     return nDuplicates;
+  }
+
+  public int getMergedTrips() {
+    return nMergedTrips;
   }
 
   private static MetricDatum metricCount(Date timestamp, String name, int value, Dimension dim) {
