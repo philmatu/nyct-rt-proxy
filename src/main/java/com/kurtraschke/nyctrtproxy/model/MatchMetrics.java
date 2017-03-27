@@ -108,8 +108,9 @@ public class MatchMetrics {
     MetricDatum dMatched = metricCount(timestamp, "MatchedTrips", nMatchedTrips, dim);
     MetricDatum dAdded = metricCount(timestamp, "AddedTrips", nAddedTrips, dim);
     //MetricDatum dCancelled = metricCount(timestamp, "CancelledTrips", nCancelledTrips, dim);
-    MetricDatum dUnmatchedNoStartDate = metricCount(timestamp, "UnmatchedWithoutStartDate", nUnmatchedNoStartDate, dim);
-    MetricDatum dUnmatchedNoStopMatch = metricCount(timestamp, "UnmatchedNoStopMatch", nUnmatchedNoStopMatch, dim);
+    // can only send 20 metrics; these are taken out in favor of dMerged
+    //MetricDatum dUnmatchedNoStartDate = metricCount(timestamp, "UnmatchedWithoutStartDate", nUnmatchedNoStartDate, dim);
+    //MetricDatum dUnmatchedNoStopMatch = metricCount(timestamp, "UnmatchedNoStopMatch", nUnmatchedNoStopMatch, dim);
     MetricDatum dStrictMatch = metricCount(timestamp, "StrictMatches", nStrictMatch, dim);
     MetricDatum dLooseMatchSameDay = metricCount(timestamp, "LooseMatchesSameDay", nLooseMatchSameDay, dim);
     MetricDatum dLooseMatchOtherDay = metricCount(timestamp, "LooseMatchesOtherDay", nLooseMatchOtherDay, dim);
@@ -133,8 +134,8 @@ public class MatchMetrics {
     MetricDatum dMergedPct = metricPct(timestamp, "MergedTripsPct", nMergedPct, dim);
 
     return Sets.newHashSet(dMatched, dAdded, dMatchedRtPct, dAddedRtPct,
-            dUnmatchedNoStartDate, dStrictMatch, dLooseMatchSameDay, dLooseMatchOtherDay, dUnmatchedWithoutStartDatePct,
-            dStrictMatchPct, dLooseMatchSameDayPct, dLooseMatchOtherDayPct, dUnmatchedNoStopMatch, dUnmatchedNoStopMatchPct,
+            dStrictMatch, dLooseMatchSameDay, dLooseMatchOtherDay, dUnmatchedWithoutStartDatePct,
+            dStrictMatchPct, dLooseMatchSameDayPct, dLooseMatchOtherDayPct, dUnmatchedNoStopMatchPct,
             dLooseMatchCoercion, dLooseMatchCoercionPct, dDuplicateTrips, dBadId, dBadIdPct, dMerged, dMergedPct);
   }
 
