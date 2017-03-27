@@ -21,7 +21,7 @@ public class MatchMetrics {
   public void add(TripMatchResult result) {
     if (result.hasResult()) {
       String tripId = result.getResult().getTrip().getId().getId();
-      if (tripIds.contains(tripIds)) {
+      if (tripIds.contains(tripId)) {
         nDuplicates++;
       }
       tripIds.add(tripId);
@@ -136,6 +136,10 @@ public class MatchMetrics {
 
   public int getAddedTrips() {
     return nAddedTrips;
+  }
+
+  public int getDuplicates() {
+    return nDuplicates;
   }
 
   private static MetricDatum metricCount(Date timestamp, String name, int value, Dimension dim) {

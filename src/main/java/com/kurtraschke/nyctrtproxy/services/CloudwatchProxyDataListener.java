@@ -72,7 +72,7 @@ public class CloudwatchProxyDataListener implements ProxyDataListener {
     dim.setName("route");
     dim.setValue(routeId);
     reportMatches(timestamp, dim, metrics);
-    _log.info("time={}, route={}, nMatchedTrips={}, nAddedTrips={}", timestamp, routeId, metrics.getMatchedTrips(), metrics.getAddedTrips());
+    _log.info("time={}, route={}, nMatchedTrips={}, nAddedTrips={},  nDuplicates={}", timestamp, routeId, metrics.getMatchedTrips(), metrics.getAddedTrips(), metrics.getDuplicates());
   }
   @Override
   public void reportMatchesForFeed(String feedId, MatchMetrics metrics) {
@@ -81,7 +81,7 @@ public class CloudwatchProxyDataListener implements ProxyDataListener {
     dim.setName("feed");
     dim.setValue(feedId);
     reportMatches(timestamp, dim, metrics);
-    _log.info("time={}, feed={}, nMatchedTrips={}, nAddedTrips={}", timestamp, feedId, metrics.getMatchedTrips(), metrics.getAddedTrips());
+    _log.info("time={}, feed={}, nMatchedTrips={}, nAddedTrips={}, nDuplicates={}", timestamp, feedId, metrics.getMatchedTrips(), metrics.getAddedTrips(), metrics.getDuplicates());
   }
 
   private void reportMatches(Date timestamp, Dimension dim, MatchMetrics metrics) {
