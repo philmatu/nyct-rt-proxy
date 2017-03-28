@@ -76,6 +76,7 @@ public class NyctTripId {
 
   }
 
+  // Route W static trip IDs have "N" in the typical 'route' position.
   public static NyctTripId buildFromTrip(Trip trip) {
     NyctTripId id = buildFromString(trip.getId().getId());
     id.routeId = trip.getRoute().getId().getId();

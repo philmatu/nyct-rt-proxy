@@ -1,6 +1,7 @@
 package com.kurtraschke.nyctrtproxy.model;
 
-import com.google.transit.realtime.GtfsRealtime;
+import com.google.transit.realtime.GtfsRealtime.TripUpdate;
+import com.google.transit.realtime.GtfsRealtime.TripUpdateOrBuilder;
 
 public class TripMatchResult implements Comparable<TripMatchResult> {
 
@@ -19,22 +20,23 @@ public class TripMatchResult implements Comparable<TripMatchResult> {
   private Status status;
   private ActivatedTrip result;
   private int delta; // lateness of RT trip relative to static trip
-  private GtfsRealtime.TripUpdate.Builder tripUpdate;
+  private TripUpdateOrBuilder tripUpdate;
 
-  public TripMatchResult(Status status, ActivatedTrip result, int delta) {
+  public TripMatchResult(TripUpdateOrBuilder tripUpdate, Status status, ActivatedTrip result, int delta) {
+    this.tripUpdate = tripUpdate;
     this.status = status;
     this.result = result;
     this.delta = delta;
   }
 
   // strict match
-  public TripMatchResult(ActivatedTrip result) {
-    this(Status.STRICT_MATCH, result, 0);
+  public TripMatchResult(TripUpdateOrBuilder tripUpdate, ActivatedTrip result) {
+    this(tripUpdate, Status.STRICT_MATCH, result, 0);
   }
 
   // no match
-  public TripMatchResult(Status status) {
-    this(status, null, 0);
+  public TripMatchResult(TripUpdateOrBuilder tripUpdate, Status status) {
+    this(tripUpdate, status, null, 0);
   }
 
   public Status getStatus() {
@@ -66,21 +68,34 @@ public class TripMatchResult implements Comparable<TripMatchResult> {
       return status.compareTo(other.status);
   }
 
-  public static TripMatchResult looseMatch(ActivatedTrip at, int delta, boolean onServiceDay) {
+  public static TripMatchResult looseMatch(TripUpdateOrBuilder tripUpdate, ActivatedTrip at, int delta, boolean onServiceDay) {
     Status status = Status.LOOSE_MATCH;
     if (delta > 0)
       status = Status.LOOSE_MATCH_COERCION;
     if (!onServiceDay)
       status = Status.LOOSE_MATCH_ON_OTHER_SERVICE_DATE;
-    return new TripMatchResult(status, at, delta);
+    return new TripMatchResult(tripUpdate, status, at, delta);
   }
 
-  public GtfsRealtime.TripUpdate.Builder getTripUpdate() {
+  public TripUpdateOrBuilder getTripUpdate() {
     return tripUpdate;
   }
 
-  public void setTripUpdate(GtfsRealtime.TripUpdate.Builder tripUpdate) {
-    this.tripUpdate = tripUpdate;
+  public TripUpdate.Builder getTripUpdateBuilder() {
+    if (tripUpdate instanceof TripUpdate.Builder)
+      return (TripUpdate.Builder) tripUpdate;
+    return TripUpdate.newBuilder((TripUpdate) tripUpdate);
+  }
+
+  // Check that the last stop of TU is same as last stop of static trip.
+  // This test could happen in LazyTripMatcher, except that we need these matches
+  // in order to merge trips with mid-line relief.
+  public boolean lastStopMatches() {
+    if (!hasResult())
+      throw new IllegalArgumentException("Cannot call lastStopMatches on a match result without an ActivatedTrip");
+    String staticStop = result.getStopTimes().get(result.getStopTimes().size() - 1).getStop().getId().getId();
+    String rtStop = tripUpdate.getStopTimeUpdate(tripUpdate.getStopTimeUpdateCount() - 1).getStopId();
+    return staticStop.equals(rtStop);
   }
 
 }

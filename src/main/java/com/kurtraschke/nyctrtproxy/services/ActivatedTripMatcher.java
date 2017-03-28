@@ -47,11 +47,11 @@ public class ActivatedTripMatcher implements TripMatcher {
     Optional<ActivatedTrip> at = candidateMatches.stream().findFirst();
     if (at.isPresent()) {
       if (routesUsingAlternateIdFormat.contains(routeId))
-        return new TripMatchResult(TripMatchResult.Status.LOOSE_MATCH, at.get(), 0);
+        return new TripMatchResult(tu, TripMatchResult.Status.LOOSE_MATCH, at.get(), 0);
       else
-        return new TripMatchResult(at.get());
+        return new TripMatchResult(tu, at.get());
     }
-    return new TripMatchResult(TripMatchResult.Status.NO_MATCH);
+    return new TripMatchResult(tu, TripMatchResult.Status.NO_MATCH);
   }
 
   @Override

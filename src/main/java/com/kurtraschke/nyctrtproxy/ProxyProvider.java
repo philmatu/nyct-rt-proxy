@@ -123,6 +123,7 @@ public class ProxyProvider {
 
     List<TripUpdate> tripUpdates = Lists.newArrayList();
 
+    // For each feed ID, read in GTFS-RT, process trip updates, push to output.
     for (int feedId : Arrays.asList(1, 2, 11, 16, 21)) {
       URI feedUrl;
 

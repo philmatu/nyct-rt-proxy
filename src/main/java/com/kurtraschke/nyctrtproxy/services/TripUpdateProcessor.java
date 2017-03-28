@@ -5,7 +5,6 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
-import com.google.common.collect.Sets;
 import com.google.inject.Inject;
 import com.google.transit.realtime.GtfsRealtime;
 import com.google.transit.realtime.GtfsRealtime.TripUpdate.StopTimeUpdate;
@@ -25,11 +24,8 @@ import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.kurtraschke.nyctrtproxy.util.NycRealtimeUtil.earliestTripStart;
@@ -85,6 +81,7 @@ public class TripUpdateProcessor {
 
     int nExpiredTus = 0;
 
+    // Read in trip updates per route. Skip trip updates that have too stale of data.
     Multimap<String, GtfsRealtime.TripUpdate> tripUpdatesByRoute = ArrayListMultimap.create();
     for (GtfsRealtime.FeedEntity entity : fm.getEntityList()) {
       if (entity.hasTripUpdate()) {
@@ -112,10 +109,12 @@ public class TripUpdateProcessor {
       Date start = range.hasStart() ? new Date(range.getStart() * 1000) : earliestTripStart(tripUpdatesByRoute.values());
       Date end = range.hasEnd() ? new Date(range.getEnd() * 1000) : new Date(fm.getHeader().getTimestamp() * 1000);
 
+      // All route IDs in this trip replacement period
       Set<String> routeIds = Arrays.stream(trp.getRouteId().split(", ?"))
               .map(routeId -> realtimeToStaticRouteMap.getOrDefault(routeId, routeId))
               .collect(Collectors.toSet());
 
+      // Kurt's trip matching algorithm (ActivatedTripMatcher) requires calculating currently-active static trips at this point.
       _tripMatcher.initForFeed(start, end, routeIds);
 
       for (String routeId : routeIds) {
@@ -128,11 +127,13 @@ public class TripUpdateProcessor {
           GtfsRealtime.TripUpdate.Builder tub = GtfsRealtime.TripUpdate.newBuilder(tu);
           GtfsRealtime.TripDescriptor.Builder tb = tub.getTripBuilder();
 
-          tb.setRouteId(realtimeToStaticRouteMap
-                  .getOrDefault(tb.getRouteId(), tb.getRouteId()));
+          // rewrite route ID for some routes
+          tb.setRouteId(realtimeToStaticRouteMap.getOrDefault(tb.getRouteId(), tb.getRouteId()));
 
+          // get ID which consists of route, direction, origin-departure time, possibly a path identifier (for feed 1.)
           NyctTripId rtid = NyctTripId.buildFromString(tb.getTripId());
 
+          // Some routes have start date set incorrectly and stop IDs that don't include the direction.
           if (routesNeedingFixup.contains(tb.getRouteId()) && rtid != null) {
             tb.setStartDate(fixedStartDate(tb));
 
@@ -144,30 +145,32 @@ public class TripUpdateProcessor {
           }
 
           TripMatchResult result = _tripMatcher.match(tub, rtid, fm.getHeader().getTimestamp());
-          result.setTripUpdate(tub);
           String tripId = result.hasResult() ? result.getResult().getTrip().getId().getId() : tb.getTripId();
           matchesByTrip.put(tripId, result);
         }
 
+        // For TUs that match to same trip - possible they should be merged (route D has mid-line relief points where trip ID changes)
         for (Collection<TripMatchResult> matches : matchesByTrip.asMap().values())
           tryMergeResult(matches);
 
+        // Read out results of matching. If there is a match, rewrite TU's trip ID. Add TU to return list.
         for (TripMatchResult result : matchesByTrip.values()) {
           if (!result.getStatus().equals(TripMatchResult.Status.MERGED)) {
-            if (_tripMatcher instanceof LazyTripMatcher && result.hasResult() && !((LazyTripMatcher) _tripMatcher).tripMatch(result)) {
+            if (result.hasResult() && !result.lastStopMatches()) {
               _log.info("no stop match rt={} static={}", result.getTripUpdate().getTrip().getTripId(), result.getResult().getTrip().getId().getId());
               result.setStatus(TripMatchResult.Status.NO_MATCH);
               result.setResult(null);
             }
-            GtfsRealtime.TripUpdate.Builder tub = result.getTripUpdate();
+            GtfsRealtime.TripUpdate.Builder tub = result.getTripUpdateBuilder();
             GtfsRealtime.TripDescriptor.Builder tb = tub.getTripBuilder();
-            if (result.getResult() != null) {
+            if (result.hasResult()) {
               ActivatedTrip at = result.getResult();
               String staticTripId = at.getTrip().getId().getId();
+              _log.debug("matched {} -> {}", tb.getTripId(), staticTripId);
               tb.setTripId(staticTripId);
               removeTimepoints(at, tub);
             } else {
-              _log.info("unmatched: {} due to {}", tub.getTrip().getTripId(), result.getStatus());
+              _log.debug("unmatched: {} due to {}", tub.getTrip().getTripId(), result.getStatus());
               tb.setScheduleRelationship(GtfsRealtime.TripDescriptor.ScheduleRelationship.ADDED);
             }
             ret.add(tub.build());
@@ -189,6 +192,7 @@ public class TripUpdateProcessor {
     return ret;
   }
 
+  // TU is *expired* if the latest arrival or departure is 5 minutes before feed's timestamp
   private static boolean expiredTripUpdate(GtfsRealtime.TripUpdate tu, long timestamp) {
     OptionalLong latestTime = tu.getStopTimeUpdateList()
             .stream()
@@ -198,6 +202,8 @@ public class TripUpdateProcessor {
     return latestTime.isPresent() && latestTime.getAsLong() < timestamp - 300;
   }
 
+  // Remove StopTimeUpdate from TU if the stop is not in trip's list of stops.
+  // NOTE this will remove timepoints, but remove additional stops for express trips that are running local.
   private void removeTimepoints(ActivatedTrip trip, GtfsRealtime.TripUpdate.Builder tripUpdate) {
     Set<String> stopIds = trip.getStopTimes().stream()
             .map(s -> s.getStop().getId().getId()).collect(Collectors.toSet());
@@ -210,7 +216,10 @@ public class TripUpdateProcessor {
     }
   }
 
-
+  // Due to a bug in I-TRAC's GTFS-RT output, there are distinct trip updates
+  // for trips which have mid-line crew relief (route D).
+  // The mid-line relief points are in the train ID so we can reconstruct
+  // the whole trip if those points match.
   private void tryMergeResult(Collection<TripMatchResult> col) {
     if (col.size() != 2)
       return;
@@ -227,8 +236,8 @@ public class TripUpdateProcessor {
     String midpt0 = getReliefPoint(first.getTripUpdate(), 1);
     String midpt1 = getReliefPoint(second.getTripUpdate(), 0);
     if (midpt0 != null && midpt0.equals(midpt1)) {
-      Iterator<StopTimeUpdate.Builder> stusToAdd = second.getTripUpdate().getStopTimeUpdateBuilderList().iterator();
-      GtfsRealtime.TripUpdate.Builder update = first.getTripUpdate();
+      Iterator<StopTimeUpdate.Builder> stusToAdd = second.getTripUpdateBuilder().getStopTimeUpdateBuilderList().iterator();
+      GtfsRealtime.TripUpdate.Builder update = first.getTripUpdateBuilder();
       StopTimeUpdate.Builder stu1 = stusToAdd.next();
       StopTimeUpdate.Builder stu0 = update.getStopTimeUpdateBuilder(update.getStopTimeUpdateCount() - 1);
       if (stu1.getStopId().equals(stu0.getStopId())) {
