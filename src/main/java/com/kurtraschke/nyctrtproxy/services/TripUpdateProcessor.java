@@ -5,6 +5,8 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
+import com.google.common.reflect.TypeToken;
+import com.google.gson.Gson;
 import com.google.inject.Inject;
 import com.google.transit.realtime.GtfsRealtime;
 import com.google.transit.realtime.GtfsRealtime.TripUpdate.StopTimeUpdate;
@@ -17,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Named;
+import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -35,13 +38,13 @@ public class TripUpdateProcessor {
 
   private static final Logger _log = LoggerFactory.getLogger(TripUpdateProcessor.class);
 
-  private static final Map<Integer, Set<String>> routeBlacklistByFeed = ImmutableMap.of(1, ImmutableSet.of("D", "N", "Q"));
+  private Map<Integer, Set<String>> _routeBlacklistByFeed = ImmutableMap.of(1, ImmutableSet.of("D", "N", "Q"));
 
-  private static final Set<String> routesNeedingFixup = ImmutableSet.of("SI", "N", "Q", "R", "W", "B", "D");
+  private Set<String> _routesNeedingFixup = ImmutableSet.of("SI", "N", "Q", "R", "W", "B", "D");
 
-  private static final Map<Integer, Map<String, String>> realtimeToStaticRouteMapByFeed = ImmutableMap.of(1, ImmutableMap.of("S", "GS"));
+  private Map<Integer, Map<String, String>> _realtimeToStaticRouteMapByFeed = ImmutableMap.of(1, ImmutableMap.of("S", "GS"));
 
-  private int _latencyLimit = -1;
+  private int _latencyLimit = 300;
 
   private ProxyDataListener _listener;
 
@@ -53,6 +56,23 @@ public class TripUpdateProcessor {
     _latencyLimit = limit;
   }
 
+  @Inject(optional = true)
+  public void setRouteBlacklistByFeed(@Named("NYCT.routeBlacklistByFeed") String json) {
+    Type type = new TypeToken<Map<Integer,Set<String>>>(){}.getType();
+    _routeBlacklistByFeed = new Gson().fromJson(json, type);
+  }
+
+  @Inject(optional = true)
+  public void setRoutesNeedingFixup(@Named("NYCT.routesNeedingFixup") String json) {
+    Type type = new TypeToken<Set<String>>(){}.getType();
+    _routesNeedingFixup = new Gson().fromJson(json, type);
+  }
+
+  @Inject(optional = true)
+  public void setRealtimeToStaticRouteMapByFeed(@Named("NYCT.realtimeToStaticRouteMapByFeed") String json) {
+    Type type = new TypeToken<Map<Integer, Map<String, String>>>(){}.getType();
+    _realtimeToStaticRouteMapByFeed = new Gson().fromJson(json, type);
+  }
 
   @Inject(optional = true)
   public void setListener(ProxyDataListener listener) {
@@ -76,7 +96,7 @@ public class TripUpdateProcessor {
       return Collections.emptyList();
     }
 
-    final Map<String, String> realtimeToStaticRouteMap = realtimeToStaticRouteMapByFeed
+    final Map<String, String> realtimeToStaticRouteMap = _realtimeToStaticRouteMapByFeed
             .getOrDefault(feedId, Collections.emptyMap());
 
     int nExpiredTus = 0;
@@ -102,11 +122,11 @@ public class TripUpdateProcessor {
     for (GtfsRealtimeNYCT.TripReplacementPeriod trp : fm.getHeader()
             .getExtension(GtfsRealtimeNYCT.nyctFeedHeader)
             .getTripReplacementPeriodList()) {
-      if (routeBlacklistByFeed.getOrDefault(feedId, Collections.emptySet()).contains(trp.getRouteId()))
+      if (_routeBlacklistByFeed.getOrDefault(feedId, Collections.emptySet()).contains(trp.getRouteId()))
         continue;
       GtfsRealtime.TimeRange range = trp.getReplacementPeriod();
 
-      Date start = range.hasStart() ? new Date(range.getStart() * 1000) : earliestTripStart(tripUpdatesByRoute.values());
+      Date start = range.hasStart() ? new Date(range.getStart() * 1000) : earliestTripStart(_routesNeedingFixup, tripUpdatesByRoute.values());
       Date end = range.hasEnd() ? new Date(range.getEnd() * 1000) : new Date(fm.getHeader().getTimestamp() * 1000);
 
       // All route IDs in this trip replacement period
@@ -134,7 +154,7 @@ public class TripUpdateProcessor {
           NyctTripId rtid = NyctTripId.buildFromString(tb.getTripId());
 
           // Some routes have start date set incorrectly and stop IDs that don't include the direction.
-          if (routesNeedingFixup.contains(tb.getRouteId()) && rtid != null) {
+          if (_routesNeedingFixup.contains(tb.getRouteId()) && rtid != null) {
             tb.setStartDate(fixedStartDate(tb));
 
             tub.getStopTimeUpdateBuilderList().forEach(stub -> {

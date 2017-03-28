@@ -25,11 +25,19 @@ Here is an example `config.txt`. Uncomment the `cloudwatch.*` values to send met
 
     NYCT.gtfsPath=/path/to/google_transit.zip
     NYCT.key=
-    NYCT.latencyLimit=300  # ignore feed if its timestamp is more than 300s in the past
     tripUpdates.url=http://localhost:8001/tripUpdates
     #cloudwatch.namespace=
     #cloudwatch.accessKey=
     #cloudwatch.secretKey=
+    
+The following parameters are defaults, but can be overridden by adding to `config.txt`:
+
+    NYCT.feedIds=["1", "2", "11", "16", "21"]
+    NYCT.routeBlacklistByFeed={"1": ["D", "N", "Q"]}
+    NYCT.routesNeedingFixup=["SI", "N", "Q", "R", "W", "B", "D"]
+    NYCT.realtimeToStaticRouteMapByFeed={"1": {"S": "GS"}}
+    NYCT.latencyLimit=300  # ignore feed if its timestamp is more than 300s in the past
+    NYCT.lateTripLimitSec=3600 # match RT trip to static trip with scheduled departure up to 3600s before RT trip
 
 ### Known issues
 

@@ -23,7 +23,6 @@ public abstract class LazyMatchingTest extends RtTestRunner {
   // copy from ProxyProvider
   private static final Set<String> routesNeedingFixup = ImmutableSet.of("SI", "N", "Q", "R", "W", "B", "D");
 
-
   private String routeId;
   private String filename;
 
@@ -61,7 +60,7 @@ public abstract class LazyMatchingTest extends RtTestRunner {
                 .collect(Collectors.toList());
 
         TimeRange range = trp.getReplacementPeriod();
-        Date start = range.hasStart() ? new Date(range.getStart() * 1000) : earliestTripStart(updates);
+        Date start = range.hasStart() ? new Date(range.getStart() * 1000) : earliestTripStart(routesNeedingFixup, updates);
         Date end = range.hasEnd() ? new Date(range.getEnd() * 1000) : new Date(msg.getHeader().getTimestamp() * 1000);
 
         atm.initForFeed(start, end, Collections.singleton(routeId));

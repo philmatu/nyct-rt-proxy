@@ -16,6 +16,7 @@ import org.onebusaway.gtfs.services.GtfsRelationalDao;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Named;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -23,7 +24,7 @@ import java.util.Set;
 
 public class LazyTripMatcher implements TripMatcher {
 
-  private static final int LATE_TRIP_LIMIT_SEC = 3600; // 1 hour
+  private int _lateTripLimitSec = 3600; // 1 hour
   private GtfsRelationalDao _dao;
   private CalendarServiceData _csd;
   private boolean _looseMatchDisabled = false;
@@ -38,6 +39,11 @@ public class LazyTripMatcher implements TripMatcher {
   @Inject
   public void setCalendarServiceData(CalendarServiceData csd) {
     _csd = csd;
+  }
+
+  @Inject(optional = true)
+  public void setLateTripLimitSec(@Named("NYCT.lateTripLimitSec") int lateTripLimitSec) {
+    _lateTripLimitSec = lateTripLimitSec;
   }
 
   public void setLooseMatchDisabled(boolean looseMatchDisabled) {
@@ -93,9 +99,8 @@ public class LazyTripMatcher implements TripMatcher {
       }
       // loose match, RT trip could be late relative to static trip
       int delta = (int) (((double) id.getOriginDepartureTime())*0.6 - start);
-      if (!_looseMatchDisabled && delta >= 0 && delta < LATE_TRIP_LIMIT_SEC) {
+      if (!_looseMatchDisabled && delta >= 0 && delta < _lateTripLimitSec) {
         found &= onServiceDay;
-        List<GtfsRealtime.TripUpdate.StopTimeUpdate> stus = tu.getStopTimeUpdateList();
 
         ActivatedTrip at = new ActivatedTrip(sd, trip, start, end, stopTimes);
         TripMatchResult result = TripMatchResult.looseMatch(tu, at, delta, onServiceDay);

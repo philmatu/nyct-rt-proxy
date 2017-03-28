@@ -6,6 +6,8 @@
 package com.kurtraschke.nyctrtproxy;
 
 import com.google.common.collect.Lists;
+import com.google.common.reflect.TypeToken;
+import com.google.gson.Gson;
 import com.google.inject.Inject;
 import com.kurtraschke.nyctrtproxy.services.TripUpdateProcessor;
 import org.onebusaway.gtfs_realtime.exporter.GtfsRealtimeFullUpdate;
@@ -28,6 +30,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Type;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
@@ -66,6 +69,8 @@ public class ProxyProvider {
 
   private int _nTries = 5;
 
+  private List<Integer> _feedIds = Arrays.asList(1, 2, 11, 16, 21);
+
   static {
     _extensionRegistry = ExtensionRegistry.newInstance();
     _extensionRegistry.add(GtfsRealtimeNYCT.nyctFeedHeader);
@@ -98,6 +103,12 @@ public class ProxyProvider {
     _nTries = nTries;
   }
 
+  @Inject(optional = true)
+  public void setFeedIds(@Named("NYCT.feedIds") String json) {
+    Type type = new TypeToken<List<Integer>>(){}.getType();
+    _feedIds = new Gson().fromJson(json, type);
+  }
+
   @Inject
   public void setTripUpdateProcessor(TripUpdateProcessor processor) {
     _processor = processor;
@@ -124,7 +135,7 @@ public class ProxyProvider {
     List<TripUpdate> tripUpdates = Lists.newArrayList();
 
     // For each feed ID, read in GTFS-RT, process trip updates, push to output.
-    for (int feedId : Arrays.asList(1, 2, 11, 16, 21)) {
+    for (int feedId : _feedIds) {
       URI feedUrl;
 
       try {
