@@ -20,10 +20,13 @@ import com.google.transit.realtime.GtfsRealtime.*;
 import com.kurtraschke.nyctrtproxy.services.TripUpdateProcessor;
 import org.junit.Test;
 import org.onebusaway.gtfs.model.Trip;
+import org.onebusaway.gtfs.services.GtfsRelationalDao;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.*;
 
@@ -33,6 +36,9 @@ public class SanityTest extends RtTestRunner {
 
   @Inject
   private TripUpdateProcessor _processor;
+
+  @Inject
+  private GtfsRelationalDao _dao;
 
   @Test
   public void test1_2017_03_13() throws Exception {
@@ -112,17 +118,17 @@ public class SanityTest extends RtTestRunner {
     assertNotNull(trip);
     assertEquals(tripUpdate.getTrip().getRouteId(), trip.getRoute().getId().getId());
 
-    // skip stop test for now.
-//    List<TripUpdate.StopTimeUpdate> stus = tripUpdate.getStopTimeUpdateList();
-//
-//    Set<String> stopIds = _dao.getStopTimesForTrip(trip)
-//            .stream()
-//            .map(st -> st.getStop().getId().getId())
-//            .collect(Collectors.toSet());
-//
-//    for (TripUpdate.StopTimeUpdate stu : stus) {
-//      assertTrue(stopIds.contains(stu.getStopId()));
-//    }
+    List<TripUpdate.StopTimeUpdate> stus = tripUpdate.getStopTimeUpdateList();
+    assertFalse(stus.isEmpty());
+
+    Set<String> stopIds = _dao.getStopTimesForTrip(trip)
+            .stream()
+            .map(st -> st.getStop().getId().getId())
+            .collect(Collectors.toSet());
+
+    for (TripUpdate.StopTimeUpdate stu : stus) {
+      assertTrue(stopIds.contains(stu.getStopId()));
+    }
 
   }
 
