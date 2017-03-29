@@ -15,9 +15,12 @@
  */
 package com.kurtraschke.nyctrtproxy.tests;
 
+import com.google.inject.Inject;
 import com.google.transit.realtime.GtfsRealtime;
 import com.kurtraschke.nyctrtproxy.model.NyctTripId;
 import com.kurtraschke.nyctrtproxy.model.TripMatchResult;
+import com.kurtraschke.nyctrtproxy.services.ActivatedTripMatcher;
+import org.junit.After;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -26,6 +29,11 @@ public class LazyMatchingTestCompareActivated extends LazyMatchingTest {
   public LazyMatchingTestCompareActivated() {
     super("SI", "11_2017-03-13.pb");
   }
+
+  @Inject
+  private ActivatedTripMatcher atm;
+
+  private int nRuns = 0;
 
   @Override
   public void checkMatchResult(long timestamp, NyctTripId rtid, GtfsRealtime.TripUpdateOrBuilder tripUpdate, TripMatchResult lazyTrip) {
@@ -36,6 +44,13 @@ public class LazyMatchingTestCompareActivated extends LazyMatchingTest {
       assertTrue("activated trip is present: " + atid, lazyTrip.hasResult());
       String ltid = lazyTrip.getResult().getTrip().getId().getId();
       assertEquals(atid, ltid);
+      nRuns++;
     }
+  }
+
+  @After
+  public void verifyTestRan() throws Exception {
+    if (nRuns < 5)
+      throw new Exception("Test did not run.");
   }
 }

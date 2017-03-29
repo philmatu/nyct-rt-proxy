@@ -38,6 +38,10 @@ public class GtfsRelationalDaoProvider implements Provider<GtfsRelationalDao> {
   @Named("NYCT.gtfsPath")
   private File _gtfsPath;
 
+  public void setGtfsPath(File gtfsPath) {
+    _gtfsPath = gtfsPath;
+  }
+
   @Override
   public GtfsRelationalDao get() {
     _log.info("Loading GTFS from {}", _gtfsPath.toString());

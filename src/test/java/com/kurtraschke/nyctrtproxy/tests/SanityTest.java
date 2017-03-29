@@ -15,7 +15,9 @@
  */
 package com.kurtraschke.nyctrtproxy.tests;
 
+import com.google.inject.Inject;
 import com.google.transit.realtime.GtfsRealtime.*;
+import com.kurtraschke.nyctrtproxy.services.TripUpdateProcessor;
 import org.junit.Test;
 import org.onebusaway.gtfs.model.Trip;
 import org.slf4j.Logger;
@@ -28,6 +30,9 @@ import static org.junit.Assert.*;
 public class SanityTest extends RtTestRunner {
 
   private static final Logger _log = LoggerFactory.getLogger(SanityTest.class);
+
+  @Inject
+  private TripUpdateProcessor _processor;
 
   @Test
   public void test1_2017_03_13() throws Exception {

@@ -15,22 +15,29 @@
  */
 package com.kurtraschke.nyctrtproxy.tests;
 
+import com.google.inject.AbstractModule;
+import com.google.inject.Guice;
+import com.google.inject.Injector;
+import com.google.inject.Module;
+import com.google.inject.Scopes;
 import com.google.protobuf.ExtensionRegistry;
 import com.google.transit.realtime.GtfsRealtime;
 import com.google.transit.realtime.GtfsRealtimeNYCT;
+import com.kurtraschke.nyctrtproxy.services.ActivatedTripMatcher;
+import com.kurtraschke.nyctrtproxy.services.CalendarServiceDataProvider;
 import com.kurtraschke.nyctrtproxy.services.CloudwatchProxyDataListener;
+import com.kurtraschke.nyctrtproxy.services.GtfsRelationalDaoProvider;
 import com.kurtraschke.nyctrtproxy.services.LazyTripMatcher;
+import com.kurtraschke.nyctrtproxy.services.ProxyDataListener;
 import com.kurtraschke.nyctrtproxy.services.TripActivator;
+import com.kurtraschke.nyctrtproxy.services.TripMatcher;
 import com.kurtraschke.nyctrtproxy.services.TripUpdateProcessor;
 import junit.framework.TestCase;
-import org.junit.BeforeClass;
-import org.onebusaway.gtfs.impl.GtfsRelationalDaoImpl;
-import org.onebusaway.gtfs.impl.calendar.CalendarServiceDataFactoryImpl;
+import org.junit.Before;
 import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.gtfs.model.Trip;
 import org.onebusaway.gtfs.model.calendar.CalendarServiceData;
-import org.onebusaway.gtfs.serialization.GtfsReader;
-import org.onebusaway.gtfs.services.calendar.CalendarServiceDataFactory;
+import org.onebusaway.gtfs.services.GtfsRelationalDao;
 
 import java.io.File;
 import java.io.IOException;
@@ -38,51 +45,28 @@ import java.io.InputStream;
 
 public abstract class RtTestRunner {
 
-  protected static TripUpdateProcessor _processor;
-  protected static CalendarServiceData _csd;
+  private static GtfsRelationalDao _dao;
+
   protected static ExtensionRegistry _extensionRegistry;
-  protected static GtfsRelationalDaoImpl _dao;
   protected static String _agencyId = "MTA NYCT";
-  protected static LazyTripMatcher _tm;
-  protected static TripActivator _ta;
 
-  @BeforeClass
-  public static void beforeClass() {
-    _dao = new GtfsRelationalDaoImpl();
-    GtfsReader reader = new GtfsReader();
-    reader.setEntityStore(_dao);
-    try {
-      File file = new File(TestCase.class.getResource("/google_transit.zip").getFile());
-      reader.setInputLocation(file);
-      reader.run();
-      reader.close();
-    } catch (IOException e) {
-      throw new RuntimeException("Failure while reading GTFS", e);
-    }
+  static {
 
-    CalendarServiceDataFactory csdf = new CalendarServiceDataFactoryImpl(_dao);
-    _csd = csdf.createData();
-
-    _ta = new TripActivator();
-    _ta.setCalendarServiceData(_csd);
-    _ta.setGtfsRelationalDao(_dao);
-    _ta.start();
-
-    _tm = new LazyTripMatcher();
-    _tm.setGtfsRelationalDao(_dao);
-    _tm.setCalendarServiceData(_csd);
-
-    _processor = new TripUpdateProcessor();
-    _processor.setTripMatcher(_tm);
-    CloudwatchProxyDataListener listener = new CloudwatchProxyDataListener();
-    listener.init();
-    _processor.setListener(listener);
-    _processor.setLatencyLimit(-1);
+    GtfsRelationalDaoProvider provider = new GtfsRelationalDaoProvider();
+    provider.setGtfsPath(new File(TestCase.class.getResource("/google_transit.zip").getFile()));
+    _dao = provider.get();
 
     _extensionRegistry = ExtensionRegistry.newInstance();
     _extensionRegistry.add(GtfsRealtimeNYCT.nyctFeedHeader);
     _extensionRegistry.add(GtfsRealtimeNYCT.nyctTripDescriptor);
     _extensionRegistry.add(GtfsRealtimeNYCT.nyctStopTimeUpdate);
+  }
+
+  @Before
+  public void before() {
+    Injector injector = Guice.createInjector(getTestModule());
+    injector.injectMembers(this);
+    injector.getInstance(TripActivator.class).start();
   }
 
   public GtfsRealtime.FeedMessage readFeedMessage(String file) throws IOException {
@@ -94,5 +78,40 @@ public abstract class RtTestRunner {
   public Trip getTrip(GtfsRealtime.TripUpdate tu) {
     String tid = tu.getTrip().getTripId();
     return _dao.getTripForId(new AgencyAndId(_agencyId, tid));
+  }
+
+  protected Module getTestModule() {
+    Module mod =  new AbstractModule() {
+      @Override protected void configure() {
+        bind(CalendarServiceData.class)
+                .toProvider(CalendarServiceDataProvider.class)
+                .in(Scopes.SINGLETON);
+
+        bind(GtfsRelationalDao.class)
+                .toInstance(_dao);
+
+        CloudwatchProxyDataListener listener = new CloudwatchProxyDataListener();
+        listener.init();
+        bind(ProxyDataListener.class)
+                .toInstance(listener);
+
+        bind(TripMatcher.class)
+                .toInstance(new LazyTripMatcher());
+
+        TripUpdateProcessor processor = new TripUpdateProcessor();
+        processor.setLatencyLimit(-1);
+        bind(TripUpdateProcessor.class)
+                .toInstance(processor);
+
+        /// needed for LazyMatchingTestCompareActivated:
+
+        bind(TripActivator.class)
+                .toInstance(new TripActivator());
+
+        bind(ActivatedTripMatcher.class)
+                .toInstance(new ActivatedTripMatcher());
+      }
+    };
+    return mod;
   }
 }

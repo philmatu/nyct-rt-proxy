@@ -15,12 +15,15 @@
  */
 package com.kurtraschke.nyctrtproxy.tests;
 
+import com.google.inject.Inject;
 import com.google.transit.realtime.GtfsRealtime.*;
 import com.kurtraschke.nyctrtproxy.model.NyctTripId;
+import com.kurtraschke.nyctrtproxy.services.TripUpdateProcessor;
 import org.junit.Test;
 import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.gtfs.model.StopTime;
 import org.onebusaway.gtfs.model.Trip;
+import org.onebusaway.gtfs.services.GtfsRelationalDao;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -30,6 +33,12 @@ import java.util.stream.Collectors;
 import static org.junit.Assert.*;
 
 public class TripMergeTest extends RtTestRunner {
+
+  @Inject
+  private TripUpdateProcessor _processor;
+
+  @Inject
+  private GtfsRelationalDao _dao;
 
   @Test
   public void testMerging() throws Exception {
@@ -59,7 +68,7 @@ public class TripMergeTest extends RtTestRunner {
     assertEquals(stopTimes, sortedStopTimes);
   }
 
-  private static List<StopTime> getStopTimesForTripUpdate(TripUpdate tu) {
+  private List<StopTime> getStopTimesForTripUpdate(TripUpdate tu) {
     String tripId = tu.getTrip().getTripId();
     Trip trip = _dao.getTripForId(new AgencyAndId("MTA NYCT", tripId));
     if (trip == null)
@@ -67,7 +76,7 @@ public class TripMergeTest extends RtTestRunner {
     return _dao.getStopTimesForTrip(trip);
   }
 
-  private static List<TripUpdate> getByRouteDirectionAndTime(List<TripUpdate> updates, String routeId, String direction, int odtime) {
+  private List<TripUpdate> getByRouteDirectionAndTime(List<TripUpdate> updates, String routeId, String direction, int odtime) {
     return updates.stream()
             .filter(tu -> {
               NyctTripId id = NyctTripId.buildFromString(tu.getTrip().getTripId());

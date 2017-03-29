@@ -16,6 +16,7 @@
 package com.kurtraschke.nyctrtproxy.tests;
 
 import com.google.common.collect.ImmutableSet;
+import com.google.inject.Inject;
 import com.google.transit.realtime.GtfsRealtime.*;
 import com.google.transit.realtime.GtfsRealtimeNYCT;
 import com.kurtraschke.nyctrtproxy.model.NyctTripId;
@@ -38,11 +39,14 @@ public abstract class LazyMatchingTest extends RtTestRunner {
   // copy from ProxyProvider
   private static final Set<String> routesNeedingFixup = ImmutableSet.of("SI", "N", "Q", "R", "W", "B", "D");
 
+  @Inject
+  private LazyTripMatcher ltm;
+
+  @Inject
+  private ActivatedTripMatcher atm;
+
   private String routeId;
   private String filename;
-
-  protected LazyTripMatcher ltm;
-  protected ActivatedTripMatcher atm;
 
   public LazyMatchingTest(String routeId, String filename) {
     this.routeId = routeId;
@@ -53,13 +57,6 @@ public abstract class LazyMatchingTest extends RtTestRunner {
 
   @Test
   public void test() throws IOException {
-    ltm = new LazyTripMatcher();
-    ltm.setGtfsRelationalDao(_dao);
-    ltm.setCalendarServiceData(_csd);
-    ltm.setLooseMatchDisabled(false);
-
-    atm = new ActivatedTripMatcher();
-    atm.setTripActivator(_ta);
 
     FeedMessage msg = readFeedMessage(filename);
 
@@ -101,4 +98,5 @@ public abstract class LazyMatchingTest extends RtTestRunner {
       }
     }
   }
+
 }
