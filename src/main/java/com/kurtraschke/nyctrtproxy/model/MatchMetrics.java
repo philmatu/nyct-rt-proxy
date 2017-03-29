@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2017 Cambridge Systematics, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.kurtraschke.nyctrtproxy.model;
 
 import com.amazonaws.services.cloudwatch.model.Dimension;
@@ -8,6 +23,11 @@ import com.google.common.collect.Sets;
 import java.util.Date;
 import java.util.Set;
 
+/**
+ * Aggregate metrics per route or per feed, and handle the creation of Cloudwatch metrics objects.
+ *
+ * @author Simon Jacobs
+ */
 public class MatchMetrics {
 
   private int nMatchedTrips = 0, nAddedTrips = 0;
@@ -18,6 +38,11 @@ public class MatchMetrics {
 
   Set<String> tripIds = Sets.newHashSet();
 
+  /**
+   * Add results of a match to currently aggregated metrics.
+   *
+   * @param result The result to add
+   */
   public void add(TripMatchResult result) {
     if (result.hasResult()) {
       String tripId = result.getResult().getTrip().getId().getId();
@@ -62,6 +87,11 @@ public class MatchMetrics {
     }
   }
 
+  /**
+   * Set internal latency metric from the timestamp of a feed, relative to current time.
+   *
+   * @param timestamp timestamp of feed in seconds
+   */
   public void reportLatency(long timestamp) {
     latency = (new Date().getTime()/1000) - timestamp;
   }
@@ -70,6 +100,13 @@ public class MatchMetrics {
     return latency;
   }
 
+  /**
+   * Return a set of Cloudwatch metric data based on currently aggregated data.
+   *
+   * @param dim Dimension for the returned metrics (likely route or feed)
+   * @param timestamp Timestamp to use for returned metrics
+   * @return Set of Cloudwatch metrics
+   */
   public Set<MetricDatum> getReportedMetrics(Dimension dim, Date timestamp) {
 
     Set<MetricDatum> data = Sets.newHashSet();

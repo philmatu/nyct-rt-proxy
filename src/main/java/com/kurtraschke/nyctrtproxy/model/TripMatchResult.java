@@ -1,11 +1,35 @@
+/*
+ * Copyright (C) 2017 Cambridge Systematics, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.kurtraschke.nyctrtproxy.model;
 
 import com.google.transit.realtime.GtfsRealtime.TripUpdate;
 import com.google.transit.realtime.GtfsRealtime.TripUpdateOrBuilder;
 
+/**
+ * Encapsulates the results of matching a RT TripUpdate.
+ *
+ * @author Simon Jacobs
+ */
 public class TripMatchResult implements Comparable<TripMatchResult> {
 
-  // ordered by goodness to make comparison easier
+  /**
+   * Possible statuses that a match can have.
+   *
+   * Ordered by goodness to make comparison easier.
+   */
   public enum Status {
     BAD_TRIP_ID,
     NO_TRIP_WITH_START_DATE,
@@ -68,6 +92,8 @@ public class TripMatchResult implements Comparable<TripMatchResult> {
       return status.compareTo(other.status);
   }
 
+  // Create TripMatchResult that's a loose match. We expect that it can either be coerced or on a different service day,
+  // but not both.
   public static TripMatchResult looseMatch(TripUpdateOrBuilder tripUpdate, ActivatedTrip at, int delta, boolean onServiceDay) {
     Status status = Status.LOOSE_MATCH;
     if (delta > 0)
@@ -87,9 +113,14 @@ public class TripMatchResult implements Comparable<TripMatchResult> {
     return TripUpdate.newBuilder((TripUpdate) tripUpdate);
   }
 
-  // Check that the last stop of TU is same as last stop of static trip.
-  // This test could happen in LazyTripMatcher, except that we need these matches
-  // in order to merge trips with mid-line relief.
+  /**
+   * Check that the last stop of TU is same as last stop of static trip.
+   *
+   * This test could happen in LazyTripMatcher, except that we need these matches
+   * in order to merge trips with mid-line relief.
+   *
+   * @return true if last static stop and RT stop match, false otherwise
+   */
   public boolean lastStopMatches() {
     if (!hasResult())
       throw new IllegalArgumentException("Cannot call lastStopMatches on a match result without an ActivatedTrip");

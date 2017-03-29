@@ -1,7 +1,17 @@
 /*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
+ * Copyright (C) 2015 Kurt Raschke <kurt@kurtraschke.com>
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 package com.kurtraschke.nyctrtproxy.model;
 
@@ -12,6 +22,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
+ * GTFS or realtime trip identifier broken into constituent parts; most importantly, route, direction, and origin-departure time.
+ *
+ * Origin-departure time is encoded as hundredths of a minute after midnight.
  *
  * @author kurt
  */
@@ -45,12 +58,10 @@ public class NyctTripId {
 
 
   /**
+   * Parse a trip ID (from static GTFS or realtime feed) into NyctTripId
    *
-   * 112250_L..S S20170301WKD_115720SI..S W20170301WKD_114000W..N
-   *
-   *
-   * @param tripId
-   * @return
+   * @param tripId the trip ID
+   * @return parsed trip ID
    */
   public static NyctTripId buildFromString(String tripId) {
     int originDepartureTime;
@@ -76,7 +87,14 @@ public class NyctTripId {
 
   }
 
-  // Route W static trip IDs have "N" in the typical 'route' position.
+  /**
+   * Build a NyctTripId from a static GTFS Trip.
+   *
+   * This is necessary because route W static trip IDs have "N" in the typical 'route' position.
+   *
+   * @param trip GTFS static trip
+   * @return parsed trip ID
+   */
   public static NyctTripId buildFromTrip(Trip trip) {
     NyctTripId id = buildFromString(trip.getId().getId());
     id.routeId = trip.getRoute().getId().getId();
@@ -96,21 +114,46 @@ public class NyctTripId {
     return String.format("%06d_%s", originDepartureTime, pathId);
   }
 
+  /**
+   * Check route, direction, and network ID match. Note only Feed 1 has IDs which *may* have network ID.
+   *
+   * This method throws an exception if {@link #networkId} is null.
+   *
+   * @param other
+   * @return true if match, false otherwise
+   */
   public boolean strictMatch(NyctTripId other) {
     return  looseMatch(other)
             && getNetworkId().equals(other.getNetworkId());
   }
 
+  /**
+   * Check route, direction, and origin-departure time match.
+   *
+   * @param other
+   * @return true if match, false otherwise
+   */
   public boolean looseMatch(NyctTripId other) {
     return routeDirMatch(other)
             && getOriginDepartureTime() == other.getOriginDepartureTime();
   }
 
+  /**
+   * Check route and direction match.
+   *
+   * @param other
+   * @return true if match, false otherwise
+   */
   public boolean routeDirMatch(NyctTripId other) {
     return getRouteId().equals(other.getRouteId())
             && getDirection().equals(other.getDirection());
   }
 
+  /**
+   * Obtain NyctTripId that is relative to a 26-hour schedule on the previous day, otherwise the same as this one.
+   *
+   * @return new trip ID
+   */
   public NyctTripId relativeToPreviousDay() {
     int time = originDepartureTime + (24 * 60 * 100);
     return new NyctTripId(time, pathId, routeId, directionId, networkId);
