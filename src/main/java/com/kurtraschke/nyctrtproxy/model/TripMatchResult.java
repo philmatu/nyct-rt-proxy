@@ -98,4 +98,8 @@ public class TripMatchResult implements Comparable<TripMatchResult> {
     return staticStop.equals(rtStop);
   }
 
+  public String getTripId() {
+    return hasResult() ? result.getTrip().getId().getId() : tripUpdate.getTrip().getTripId();
+  }
+
 }

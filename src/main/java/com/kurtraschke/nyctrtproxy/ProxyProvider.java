@@ -69,6 +69,8 @@ public class ProxyProvider {
 
   private int _nTries = 5;
 
+  private int _refreshRate = 60;
+
   private List<Integer> _feedIds = Arrays.asList(1, 2, 11, 16, 21);
 
   static {
@@ -109,6 +111,11 @@ public class ProxyProvider {
     _feedIds = new Gson().fromJson(json, type);
   }
 
+  @Inject(optional = true)
+  public void setRefreshRate(@Named("NYCT.refreshRate") int refreshRate) {
+    _refreshRate = refreshRate;
+  }
+
   @Inject
   public void setTripUpdateProcessor(TripUpdateProcessor processor) {
     _processor = processor;
@@ -117,7 +124,7 @@ public class ProxyProvider {
   @PostConstruct
   public void start() {
     _httpClient = HttpClientBuilder.create().setConnectionManager(_connectionManager).build();
-    _updater = _scheduledExecutorService.scheduleWithFixedDelay(this::update, 0, 60, TimeUnit.SECONDS);
+    _updater = _scheduledExecutorService.scheduleWithFixedDelay(this::update, 0, _refreshRate, TimeUnit.SECONDS);
   }
 
   @PreDestroy

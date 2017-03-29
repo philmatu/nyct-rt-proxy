@@ -165,8 +165,7 @@ public class TripUpdateProcessor {
           }
 
           TripMatchResult result = _tripMatcher.match(tub, rtid, fm.getHeader().getTimestamp());
-          String tripId = result.hasResult() ? result.getResult().getTrip().getId().getId() : tb.getTripId();
-          matchesByTrip.put(tripId, result);
+          matchesByTrip.put(result.getTripId(), result);
         }
 
         // For TUs that match to same trip - possible they should be merged (route D has mid-line relief points where trip ID changes)
@@ -278,6 +277,8 @@ public class TripUpdateProcessor {
     String[] tokens = trainId.split(" ");
     String relief = tokens[tokens.length - 1];
     String[] points = relief.split("/");
+    if (pt >= points.length)
+      return null;
     return points[pt];
   }
 }

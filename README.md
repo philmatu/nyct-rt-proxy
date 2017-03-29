@@ -38,6 +38,7 @@ The following parameters are defaults, but can be overridden by adding to `confi
     NYCT.realtimeToStaticRouteMapByFeed={"1": {"S": "GS"}}
     NYCT.latencyLimit=300  # ignore feed if its timestamp is more than 300s in the past
     NYCT.lateTripLimitSec=3600 # match RT trip to static trip with scheduled departure up to 3600s before RT trip
+    NYCT.refreshRate=60
 
 ### Known issues
 
