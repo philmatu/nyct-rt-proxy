@@ -44,6 +44,8 @@ The following parameters are defaults, but can be overridden by adding to `confi
 
 - There can be duplicate trip IDs in the published feed, because TripUpdates without an exact origin-departure time match are matched
 to the closest static trip in the past. We cannot remove duplicates without adding state to the matching algorithm.
+- StopTimeUpdates which do not correspond to stop times in the matched trip are removed. This means that if an express trip is running
+local, local stops will not be propagated.
 
 ### Feed/route reference
 
