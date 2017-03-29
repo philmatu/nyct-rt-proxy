@@ -127,11 +127,8 @@ public class MatchMetrics {
   }
 
   private Set<MetricDatum> getMatchMetrics(Dimension dim, Date timestamp) {
-    //double nCancelledPctOfStatic = ((double) nCancelledTrips) / nStatic;
-
     double nRt = nMatchedTrips + nAddedTrips;
     double nMatchedRtPct = ((double) nMatchedTrips) / nRt;
-    double nAddedRtPct = ((double) nAddedTrips) / nRt;
 
     double nUnmatchedWithoutStartDatePct = ((double) nUnmatchedNoStartDate) / nRt;
     double nUnmatchedNoStopMatchPct = ((double) nUnmatchedNoStopMatch) / nRt;
@@ -139,41 +136,26 @@ public class MatchMetrics {
     double nLooseMatchSameDayPct = ((double) nLooseMatchSameDay) / nRt;
     double nLooseMatchOtherDayPct = ((double) nLooseMatchOtherDay) / nRt;
     double nLooseMatchCoercionPct = ((double) nLooseMatchCoercion) / nRt;
-    double nBadIdPct = ((double) nBadId) / nRt;
     double nMergedPct = ((double) nMergedTrips) / nRt;
 
     MetricDatum dMatched = metricCount(timestamp, "MatchedTrips", nMatchedTrips, dim);
     MetricDatum dAdded = metricCount(timestamp, "AddedTrips", nAddedTrips, dim);
-    //MetricDatum dCancelled = metricCount(timestamp, "CancelledTrips", nCancelledTrips, dim);
-    // can only send 20 metrics; these are taken out in favor of dMerged
-    //MetricDatum dUnmatchedNoStartDate = metricCount(timestamp, "UnmatchedWithoutStartDate", nUnmatchedNoStartDate, dim);
-    //MetricDatum dUnmatchedNoStopMatch = metricCount(timestamp, "UnmatchedNoStopMatch", nUnmatchedNoStopMatch, dim);
-    MetricDatum dStrictMatch = metricCount(timestamp, "StrictMatches", nStrictMatch, dim);
-    MetricDatum dLooseMatchSameDay = metricCount(timestamp, "LooseMatchesSameDay", nLooseMatchSameDay, dim);
-    MetricDatum dLooseMatchOtherDay = metricCount(timestamp, "LooseMatchesOtherDay", nLooseMatchOtherDay, dim);
-    MetricDatum dLooseMatchCoercion = metricCount(timestamp, "LooseMatchCoercion", nLooseMatchCoercion, dim);
     MetricDatum dDuplicateTrips = metricCount(timestamp, "DuplicateTripMatches", nDuplicates, dim);
     MetricDatum dBadId = metricCount(timestamp, "UnmatchedBadId", nBadId, dim);
     MetricDatum dMerged = metricCount(timestamp, "MergedTrips", nMergedTrips, dim);
 
-
-    //MetricDatum dMatchedPct = metricPct(timestamp, "MatchedStaticTripsPct", nMatchedPctOfStatic, dim);
-    //MetricDatum dCancelledPct = metricPct(timestamp, "CancelledStaticTripsPct", nCancelledPctOfStatic, dim);
     MetricDatum dMatchedRtPct = metricPct(timestamp, "MatchedRtTripsPct", nMatchedRtPct, dim);
-    MetricDatum dAddedRtPct = metricPct(timestamp, "AddedRtTripsPct", nAddedRtPct, dim);
     MetricDatum dUnmatchedWithoutStartDatePct = metricPct(timestamp, "UnmatchedWithoutStartDatePct", nUnmatchedWithoutStartDatePct, dim);
     MetricDatum dUnmatchedNoStopMatchPct = metricPct(timestamp, "UnmatchedNoStopMatchPct", nUnmatchedNoStopMatchPct, dim);
     MetricDatum dStrictMatchPct = metricPct(timestamp, "StrictMatchPct", nStrictMatchPct, dim);
     MetricDatum dLooseMatchSameDayPct = metricPct(timestamp, "LooseMatchSameDayPct", nLooseMatchSameDayPct, dim);
     MetricDatum dLooseMatchOtherDayPct = metricPct(timestamp, "LooseMatchOtherDayPct", nLooseMatchOtherDayPct, dim);
     MetricDatum dLooseMatchCoercionPct = metricPct(timestamp, "LooseMatchCoercionPct", nLooseMatchCoercionPct, dim);
-    MetricDatum dBadIdPct = metricPct(timestamp, "UnmatchedBadIdPct", nBadIdPct, dim);
     MetricDatum dMergedPct = metricPct(timestamp, "MergedTripsPct", nMergedPct, dim);
 
-    return Sets.newHashSet(dMatched, dAdded, dMatchedRtPct, dAddedRtPct,
-            dStrictMatch, dLooseMatchSameDay, dLooseMatchOtherDay, dUnmatchedWithoutStartDatePct,
+    return Sets.newHashSet(dMatched, dAdded, dMatchedRtPct, dUnmatchedWithoutStartDatePct,
             dStrictMatchPct, dLooseMatchSameDayPct, dLooseMatchOtherDayPct, dUnmatchedNoStopMatchPct,
-            dLooseMatchCoercion, dLooseMatchCoercionPct, dDuplicateTrips, dBadId, dBadIdPct, dMerged, dMergedPct);
+            dLooseMatchCoercionPct, dDuplicateTrips, dBadId, dMerged, dMergedPct);
   }
 
   public int getMatchedTrips() {
