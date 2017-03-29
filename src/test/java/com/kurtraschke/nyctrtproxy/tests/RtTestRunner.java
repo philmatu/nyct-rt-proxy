@@ -77,6 +77,7 @@ public abstract class RtTestRunner {
     CloudwatchProxyDataListener listener = new CloudwatchProxyDataListener();
     listener.init();
     _processor.setListener(listener);
+    _processor.setLatencyLimit(-1);
 
     _extensionRegistry = ExtensionRegistry.newInstance();
     _extensionRegistry.add(GtfsRealtimeNYCT.nyctFeedHeader);

@@ -80,7 +80,7 @@ public class TripActivator {
                 return sb.build();
               }).summaryStatistics();
 
-      tripTimesTree.insert(iss.getMin(), iss.getMax(), new TripWithTime(trip, iss.getMin(), iss.getMax()));
+      tripTimesTree.insert(iss.getMin(), iss.getMax(), trip);
     });
     tripTimesTree.build();
 
@@ -119,13 +119,13 @@ public class TripActivator {
               int startTime = (int) ((start.getTime() / 1000) - sdOrigin);
               int endTime = (int) ((end.getTime() / 1000) - sdOrigin);
 
-              Stream<TripWithTime> tripsStream = tripTimesTree.query(startTime, endTime).stream()
-                      .map(TripWithTime.class::cast);
+              Stream<Trip> tripsStream = tripTimesTree.query(startTime, endTime).stream()
+                      .map(Trip.class::cast);
 
               return tripsStream
-                      .filter(t -> routeIds.contains(t.trip.getRoute().getId().getId()))
-                      .filter(t -> serviceIdsForDate.contains(t.trip.getServiceId()))
-                      .map(t -> new ActivatedTrip(sd, t.trip, t.start, t.end, _dao.getStopTimesForTrip(t.trip)));
+                      .filter(t -> routeIds.contains(t.getRoute().getId().getId()))
+                      .filter(t -> serviceIdsForDate.contains(t.getServiceId()))
+                      .map(t -> new ActivatedTrip(sd, t, _dao.getStopTimesForTrip(t)));
             });
 
   }
@@ -134,23 +134,4 @@ public class TripActivator {
     return getTripsForRangeAndRoutes(start, end, ImmutableSet.of(routeId));
   }
 
-}
-
-class TripWithTime {
-  Trip trip;
-  long start;
-  long end;
-  TripWithTime(Trip trip, long start, long end) {
-    this.trip = trip;
-    this.start = start;
-    this.end = end;
-  }
-  @Override
-  public int hashCode() {
-    return trip.hashCode();
-  }
-  @Override
-  public boolean equals(Object o) {
-    return (o instanceof TripWithTime) && trip.equals(((TripWithTime) o).trip);
-  }
 }

@@ -118,7 +118,7 @@ public class LazyTripMatcher implements TripMatcher {
       boolean onServiceDay = serviceIds.contains(trip.getServiceId());
       if (atid.strictMatch(id) && onServiceDay) {
         found = true;
-        candidates.add(new TripMatchResult(tu, new ActivatedTrip(sd, trip, start, end, stopTimes)));
+        candidates.add(new TripMatchResult(tu, new ActivatedTrip(sd, trip, stopTimes)));
         continue;
       }
       // loose match, RT trip could be late relative to static trip
@@ -126,7 +126,7 @@ public class LazyTripMatcher implements TripMatcher {
       if (!_looseMatchDisabled && delta >= 0 && delta < _lateTripLimitSec) {
         found &= onServiceDay;
 
-        ActivatedTrip at = new ActivatedTrip(sd, trip, start, end, stopTimes);
+        ActivatedTrip at = new ActivatedTrip(sd, trip, stopTimes);
         TripMatchResult result = TripMatchResult.looseMatch(tu, at, delta, onServiceDay);
         // disable trips that are coerced AND on a different day
         if (onServiceDay || delta == 0)

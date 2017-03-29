@@ -15,8 +15,6 @@
  */
 package com.kurtraschke.nyctrtproxy.model;
 
-import com.google.transit.realtime.GtfsRealtimeNYCT.*;
-import com.google.transit.realtime.GtfsRealtime.*;
 import org.onebusaway.gtfs.model.StopTime;
 import org.onebusaway.gtfs.model.Trip;
 import org.onebusaway.gtfs.model.calendar.ServiceDate;
@@ -33,16 +31,12 @@ public class ActivatedTrip {
   private final ServiceDate sd;
   private final Trip theTrip;
   private final NyctTripId parsedTripId;
-  private long start;
-  private long end;
   private List<StopTime> stopTimes;
 
-  public ActivatedTrip(ServiceDate sd, Trip theTrip, long start, long end, List<StopTime> stopTimes) {
+  public ActivatedTrip(ServiceDate sd, Trip theTrip, List<StopTime> stopTimes) {
     this.sd = sd;
     this.theTrip = theTrip;
     this.parsedTripId = NyctTripId.buildFromString(theTrip.getId().getId());
-    this.start = sd.getAsDate().getTime()/1000 + start;
-    this.end = sd.getAsDate().getTime()/1000 + end;
     this.stopTimes = stopTimes;
   }
 
@@ -58,23 +52,8 @@ public class ActivatedTrip {
     return parsedTripId;
   }
 
-  public long getEnd() {
-    return end;
-  }
-
-  public long getStart() {
-    return start;
-  }
-
   public List<StopTime> getStopTimes() {
     return stopTimes;
-  }
-
-  public boolean activeFor(TripReplacementPeriod trp, long timestamp) {
-    TimeRange tr = trp.getReplacementPeriod();
-    long trStart = tr.hasStart() ? tr.getStart() : timestamp;
-    long trEnd = tr.hasEnd() ? tr.getEnd() : timestamp;
-    return getStart() < timestamp && getEnd() > trStart; // only consider trips that have *started* as active.
   }
 
   @Override
