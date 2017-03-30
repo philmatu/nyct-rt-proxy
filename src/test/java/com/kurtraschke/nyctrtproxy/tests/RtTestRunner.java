@@ -17,9 +17,11 @@ package com.kurtraschke.nyctrtproxy.tests;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
+import com.google.inject.Inject;
 import com.google.inject.Injector;
 import com.google.inject.Module;
 import com.google.inject.Scopes;
+import com.google.inject.name.Names;
 import com.google.protobuf.ExtensionRegistry;
 import com.google.transit.realtime.GtfsRealtime;
 import com.google.transit.realtime.GtfsRealtimeNYCT;
@@ -45,16 +47,17 @@ import java.io.InputStream;
 
 public abstract class RtTestRunner {
 
-  private static GtfsRelationalDao _dao;
+  @Inject
+  private GtfsRelationalDao _dao;
 
   protected static ExtensionRegistry _extensionRegistry;
   protected static String _agencyId = "MTA NYCT";
 
-  static {
+  private static Injector _injector;
 
-    GtfsRelationalDaoProvider provider = new GtfsRelationalDaoProvider();
-    provider.setGtfsPath(new File(TestCase.class.getResource("/google_transit.zip").getFile()));
-    _dao = provider.get();
+  static {
+    _injector = Guice.createInjector(getTestModule());
+    _injector.getInstance(TripActivator.class).start();
 
     _extensionRegistry = ExtensionRegistry.newInstance();
     _extensionRegistry.add(GtfsRealtimeNYCT.nyctFeedHeader);
@@ -64,9 +67,7 @@ public abstract class RtTestRunner {
 
   @Before
   public void before() {
-    Injector injector = Guice.createInjector(getTestModule());
-    injector.injectMembers(this);
-    injector.getInstance(TripActivator.class).start();
+    _injector.injectMembers(this);
   }
 
   public GtfsRealtime.FeedMessage readFeedMessage(String file) throws IOException {
@@ -80,15 +81,20 @@ public abstract class RtTestRunner {
     return _dao.getTripForId(new AgencyAndId(_agencyId, tid));
   }
 
-  protected Module getTestModule() {
-    Module mod =  new AbstractModule() {
+  protected static Module getTestModule() {
+    return new AbstractModule() {
       @Override protected void configure() {
         bind(CalendarServiceData.class)
                 .toProvider(CalendarServiceDataProvider.class)
                 .in(Scopes.SINGLETON);
 
+        bind(File.class)
+                .annotatedWith(Names.named("NYCT.gtfsPath"))
+                .toInstance(new File(TestCase.class.getResource("/google_transit.zip").getFile()));
+
         bind(GtfsRelationalDao.class)
-                .toInstance(_dao);
+                .toProvider(GtfsRelationalDaoProvider.class)
+                .in(Scopes.SINGLETON);
 
         CloudwatchProxyDataListener listener = new CloudwatchProxyDataListener();
         listener.init();
@@ -112,6 +118,5 @@ public abstract class RtTestRunner {
                 .toInstance(new ActivatedTripMatcher());
       }
     };
-    return mod;
   }
 }
