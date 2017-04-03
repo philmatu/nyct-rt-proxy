@@ -33,6 +33,7 @@ import com.kurtraschke.nyctrtproxy.services.GtfsRelationalDaoProvider;
 
 import org.apache.http.conn.HttpClientConnectionManager;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
+import org.onebusaway.nyc.siri.support.SiriXmlSerializer;
 
 import java.util.Set;
 import java.util.concurrent.Executors;
@@ -74,6 +75,10 @@ public class ProxyModule extends AbstractModule {
 
     bind(TripUpdateProcessor.class)
             .toInstance(new TripUpdateProcessor());
+
+    // for service alerts
+    bind(SiriXmlSerializer.class)
+            .toInstance(new SiriXmlSerializer());
   }
 
   /**
