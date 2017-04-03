@@ -27,7 +27,11 @@
       <exclusions>
         <exclusion>
           <groupId>org.slf4j</groupId>
-          <artifactId>*</artifactId>
+          <artifactId>slf4j-api</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-log4j12</artifactId>
         </exclusion>
         <exclusion>
           <groupId>log4j</groupId>
@@ -36,10 +40,6 @@
         <exclusion>
           <groupId>org.opentripplanner</groupId>
           <artifactId>opentripplanner-routing</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.springframework</groupId>
-          <artifactId>*</artifactId>
         </exclusion>
         <exclusion>
           <groupId>org.onebusaway</groupId>
@@ -56,6 +56,14 @@
         <exclusion>
           <groupId>com.thoughtworks.xstream</groupId>
           <artifactId>xstream</artifactId>
+        </exclusion>
+        <exclusion>
+         <groupId>org.springframework</groupId>
+         <artifactId>spring-beans</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.springframework</groupId>
+          <artifactId>spring-core</artifactId>
         </exclusion>
       </exclusions>
     </dependency>
