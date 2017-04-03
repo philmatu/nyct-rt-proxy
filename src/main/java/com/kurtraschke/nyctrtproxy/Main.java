@@ -17,6 +17,7 @@ package com.kurtraschke.nyctrtproxy;
 
 import org.onebusaway.gtfs_realtime.exporter.GtfsRealtimeExporter;
 import org.onebusaway.gtfs_realtime.exporter.GtfsRealtimeFileWriter;
+import org.onebusaway.gtfs_realtime.exporter.GtfsRealtimeGuiceBindingTypes.Alerts;
 import org.onebusaway.gtfs_realtime.exporter.GtfsRealtimeGuiceBindingTypes.TripUpdates;
 import org.onebusaway.gtfs_realtime.exporter.GtfsRealtimeServlet;
 import org.onebusaway.guice.jsr250.LifecycleService;
@@ -64,11 +65,19 @@ public class Main {
   private ProxyProvider _provider;
 
   @Inject
+  @SuppressWarnings("unused")
+  private AlertsProvider _alertsProvider;
+
+  @Inject
   private LifecycleService _lifecycleService;
 
   @Inject
   @TripUpdates
   GtfsRealtimeExporter _tripUpdatesExporter;
+
+  @Inject
+  @Alerts
+  GtfsRealtimeExporter _alertsExporter;
 
   private static final String ARG_CONFIG_FILE = "config";
 
@@ -119,6 +128,10 @@ public class Main {
     configureExporter(getConfigurationValue(URL.class, "tripUpdates.url"),
             getConfigurationValue(File.class, "tripUpdates.path"),
             _tripUpdatesExporter);
+
+    configureExporter(getConfigurationValue(URL.class, "alerts.url"),
+            getConfigurationValue(File.class, "alerts.path"),
+            _alertsExporter);
 
     _lifecycleService.start();
   }
