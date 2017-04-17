@@ -18,6 +18,7 @@ package com.kurtraschke.nyctrtproxy.services;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.handlers.AsyncHandler;
+import com.amazonaws.regions.Regions;
 import com.amazonaws.services.cloudwatch.AmazonCloudWatchAsync;
 import com.amazonaws.services.cloudwatch.AmazonCloudWatchAsyncClientBuilder;
 import com.amazonaws.services.cloudwatch.model.Dimension;
@@ -72,6 +73,7 @@ public class CloudwatchProxyDataListener implements ProxyDataListener {
     BasicAWSCredentials cred = new BasicAWSCredentials(_accessKey, _secretKey);
     _client = AmazonCloudWatchAsyncClientBuilder.standard()
             .withCredentials(new AWSStaticCredentialsProvider(cred))
+            .withRegion(Regions.US_EAST_1)
             .build();
     _handler = new AsyncHandler<PutMetricDataRequest, PutMetricDataResult>() {
       @Override

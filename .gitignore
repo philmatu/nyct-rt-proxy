@@ -8,4 +8,10 @@ dependency-reduced-pom.xml
 buildNumber.properties
 .mvn/timing.properties
 config
+<<<<<<< Updated upstream
 .idea/
+=======
+/.idea/
+/*.iml
+/config
+>>>>>>> Stashed changes

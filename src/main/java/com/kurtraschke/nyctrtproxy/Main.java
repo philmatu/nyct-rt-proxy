@@ -87,7 +87,7 @@ public class Main {
     Main m = new Main();
 
     ArgumentParser parser = ArgumentParsers.newArgumentParser("nyct-rt-proxy");
-    parser.description("Produces a GTFS-realtime feed from the Washington State Ferries API");
+    parser.description("Produces a cleaner GTFS-realtime feed from the NYCT Subway GTFS-rt");
     parser.addArgument("--" + ARG_CONFIG_FILE).type(File.class).help("configuration file path");
     Namespace parsedArgs;
 
