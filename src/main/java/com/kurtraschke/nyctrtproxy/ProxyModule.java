@@ -1,10 +1,25 @@
 /*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
+ * Copyright (C) 2015 Kurt Raschke <kurt@kurtraschke.com>
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 package com.kurtraschke.nyctrtproxy;
 
+import com.kurtraschke.nyctrtproxy.services.CloudwatchProxyDataListener;
+import com.kurtraschke.nyctrtproxy.services.LazyTripMatcher;
+import com.kurtraschke.nyctrtproxy.services.ProxyDataListener;
+import com.kurtraschke.nyctrtproxy.services.TripMatcher;
+import com.kurtraschke.nyctrtproxy.services.TripUpdateProcessor;
 import org.onebusaway.gtfs.model.calendar.CalendarServiceData;
 import org.onebusaway.gtfs.services.GtfsRelationalDao;
 import org.onebusaway.gtfs_realtime.exporter.GtfsRealtimeExporterModule;
@@ -18,6 +33,7 @@ import com.kurtraschke.nyctrtproxy.services.GtfsRelationalDaoProvider;
 
 import org.apache.http.conn.HttpClientConnectionManager;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
+import org.onebusaway.nyc.siri.support.SiriXmlSerializer;
 
 import java.util.Set;
 import java.util.concurrent.Executors;
@@ -51,6 +67,18 @@ public class ProxyModule extends AbstractModule {
             .toProvider(GtfsRelationalDaoProvider.class)
             .in(Scopes.SINGLETON);
 
+    bind(ProxyDataListener.class)
+            .toInstance(new CloudwatchProxyDataListener());
+
+    bind(TripMatcher.class)
+            .toInstance(new LazyTripMatcher());
+
+    bind(TripUpdateProcessor.class)
+            .toInstance(new TripUpdateProcessor());
+
+    // for service alerts
+    bind(SiriXmlSerializer.class)
+            .toInstance(new SiriXmlSerializer());
   }
 
   /**
