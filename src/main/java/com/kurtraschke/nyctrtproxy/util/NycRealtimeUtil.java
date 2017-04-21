@@ -40,21 +40,21 @@ public class NycRealtimeUtil {
     return td.getStartDate().substring(0, 10).replace("-", "");
   }
 
-  public static Date earliestTripStart(Set<String> routesNeedingFixup, Collection<GtfsRealtime.TripUpdate> updates) {
+  public static Date earliestTripStart(Collection<GtfsRealtime.TripUpdate> updates) {
     OptionalLong time = updates.stream()
-            .mapToLong(tu -> tripUpdateStart(routesNeedingFixup, tu))
+            .mapToLong(tu -> tripUpdateStart(tu))
             .filter(n -> n > 0).min();
     return time.isPresent() ? new Date(time.getAsLong()) : null;
   }
 
   // take a TripUpdate and return the epoch time in millis that this trip started
-  private static long tripUpdateStart(Set<String> routesNeedingFixup, GtfsRealtime.TripUpdate tu) {
+  private static long tripUpdateStart(GtfsRealtime.TripUpdate tu) {
     GtfsRealtime.TripDescriptor td = tu.getTrip();
     NyctTripId rtid = NyctTripId.buildFromString(td.getTripId());
     if (rtid == null)
       return -1;
     int minHds = rtid.getOriginDepartureTime();
-    String startDate = routesNeedingFixup.contains(td.getRouteId()) ? fixedStartDate(td) : td.getStartDate();
+    String startDate = td.getStartDate().length() > 8 ? fixedStartDate(td) : td.getStartDate();
     ServiceDate sd;
     try {
       sd = ServiceDate.parseString(startDate);

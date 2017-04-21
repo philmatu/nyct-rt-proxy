@@ -34,7 +34,6 @@ The following parameters are defaults, but can be overridden by adding to `confi
 
     NYCT.feedIds=["1", "2", "11", "16", "21"]
     NYCT.routeBlacklistByFeed={"1": ["D", "N", "Q"]}
-    NYCT.routesNeedingFixup=["SI", "N", "Q", "R", "W", "B", "D"]
     NYCT.realtimeToStaticRouteMapByFeed={"1": {"S": "GS"}}
     NYCT.latencyLimit=300  # ignore feed if its timestamp is more than 300s in the past
     NYCT.lateTripLimitSec=3600 # match RT trip to static trip with scheduled departure up to 3600s before RT trip
@@ -59,4 +58,7 @@ See MTA's [list of feeds](http://datamine.mta.info/list-of-feeds).
 |16|N,Q,R,W|Intermittent connections.|
 |21|B,D|Southbound trips on D may be separated at mid-line relief points.|
 
-Routes in feeds 11, 16, and 21 require "fixup" ie start date must be reformatted and directions must be added to stop IDs.
+The following conditions will be automatically fixed:
+
+- Invalid `TripDescriptor.start_date` values (format YYYY-MM-DD HH:MM:SS rather than YYYYMMDD)
+- Stop IDs missing direction of travel
