@@ -88,20 +88,24 @@ public class AlertsProvider {
     _refreshRate = refreshRate;
   }
 
-  @Inject
+  @Inject(optional = true)
   public void setServiceAlertsUrl(@Named("NYCT.serviceAlertsUrl") String url) {
     _serviceAlertsUrl = url;
   }
 
   @PostConstruct
   public void start() {
-    _httpClient = HttpClientBuilder.create().setConnectionManager(_connectionManager).build();
-    _updater = _scheduledExecutorService.scheduleWithFixedDelay(this::update, 0, _refreshRate, TimeUnit.SECONDS);
+    if (_serviceAlertsUrl != null) {
+      _httpClient = HttpClientBuilder.create().setConnectionManager(_connectionManager).build();
+      _updater = _scheduledExecutorService.scheduleWithFixedDelay(this::update, 0, _refreshRate, TimeUnit.SECONDS);
+    }
   }
 
   @PreDestroy
   public void stop() {
-    _updater.cancel(false);
+    if (_updater != null) {
+      _updater.cancel(false);
+    }
     _scheduledExecutorService.shutdown();
     _connectionManager.shutdown();
   }
