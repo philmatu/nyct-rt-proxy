@@ -71,6 +71,11 @@ public class SanityTest extends RtTestRunner {
     test(21, "21_2017-03-13.pb", 29, 25);
   }
 
+  @Test
+  public void test21_2017_04_20() throws Exception {
+    test(21, "21_2017-04-20.pb", 43, 1);
+  }
+
   // Test overnight service
   @Test
   public void test11_midnight() throws Exception {
