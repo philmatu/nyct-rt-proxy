@@ -173,7 +173,7 @@ public class TripUpdateProcessor {
           tb.setRouteId(realtimeToStaticRouteMap.getOrDefault(tb.getRouteId(), tb.getRouteId()));
 
           // get ID which consists of route, direction, origin-departure time, possibly a path identifier (for feed 1.)
-          NyctTripId rtid = NyctTripId.buildFromString(tb.getTripId());
+          NyctTripId rtid = NyctTripId.buildFromTripDescriptor(tb);
 
           // If we were able to parse the trip ID, there are various fixes
           // we may need to apply.
@@ -279,8 +279,8 @@ public class TripUpdateProcessor {
   }
 
   private TripMatchResult mergedResult(TripMatchResult first, TripMatchResult second) {
-    NyctTripId firstId = NyctTripId.buildFromString(first.getTripUpdate().getTrip().getTripId());
-    NyctTripId secondId = NyctTripId.buildFromString(second.getTripUpdate().getTrip().getTripId());
+    NyctTripId firstId = NyctTripId.buildFromTripDescriptor(first.getTripUpdate().getTrip());
+    NyctTripId secondId = NyctTripId.buildFromTripDescriptor(second.getTripUpdate().getTrip());
     if (firstId.getOriginDepartureTime() > secondId.getOriginDepartureTime())
       return mergedResult(second, first);
 

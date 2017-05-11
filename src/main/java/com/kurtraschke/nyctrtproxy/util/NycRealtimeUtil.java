@@ -50,7 +50,7 @@ public class NycRealtimeUtil {
   // take a TripUpdate and return the epoch time in millis that this trip started
   private static long tripUpdateStart(GtfsRealtime.TripUpdate tu) {
     GtfsRealtime.TripDescriptor td = tu.getTrip();
-    NyctTripId rtid = NyctTripId.buildFromString(td.getTripId());
+    NyctTripId rtid = NyctTripId.buildFromTripDescriptor(td);
     if (rtid == null)
       return -1;
     int minHds = rtid.getOriginDepartureTime();

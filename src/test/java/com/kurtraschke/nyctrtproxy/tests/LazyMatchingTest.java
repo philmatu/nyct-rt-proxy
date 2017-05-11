@@ -80,7 +80,7 @@ public abstract class LazyMatchingTest extends RtTestRunner {
           TripUpdate.Builder tub = TripUpdate.newBuilder(tu);
 
           TripDescriptor.Builder tb = tub.getTripBuilder();
-          NyctTripId rtid = NyctTripId.buildFromString(tb.getTripId());
+          NyctTripId rtid = NyctTripId.buildFromTripDescriptor(tb);
 
           if (rtid != null) {
             tub.getStopTimeUpdateBuilderList().forEach(stub -> {

@@ -85,7 +85,7 @@ public class SanityTest extends RtTestRunner {
   // Test 5X -> 5 rewriting
   @Test
   public void test1_peak() throws Exception {
-    test(1, "1_peak_sample.pb", 258, 30);
+    test(1, "1_peak_sample.pb", 280, 8);
   }
 
   private void test(int feedId, String protobuf, int nScheduledExpected, int nAddedExpected) throws Exception {

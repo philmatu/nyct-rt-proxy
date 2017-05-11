@@ -79,7 +79,7 @@ public class TripMergeTest extends RtTestRunner {
   private List<TripUpdate> getByRouteDirectionAndTime(List<TripUpdate> updates, String routeId, String direction, int odtime) {
     return updates.stream()
             .filter(tu -> {
-              NyctTripId id = NyctTripId.buildFromString(tu.getTrip().getTripId());
+              NyctTripId id = NyctTripId.buildFromTripDescriptor(tu.getTrip());
               return id.getRouteId().equals(routeId) && id.getDirection().equals(direction) && id.getOriginDepartureTime() == odtime;
             }).collect(Collectors.toList());
   }
