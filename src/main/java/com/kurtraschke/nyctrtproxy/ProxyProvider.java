@@ -81,6 +81,8 @@ public class ProxyProvider {
 
   private int _refreshRate = 60;
 
+  private int _retryDelay = 5;
+
   private List<Integer> _feedIds = Arrays.asList(1, 2, 11, 16, 21);
 
   static {
@@ -124,6 +126,11 @@ public class ProxyProvider {
   @Inject(optional = true)
   public void setRefreshRate(@Named("NYCT.refreshRate") int refreshRate) {
     _refreshRate = refreshRate;
+  }
+
+  @Inject(optional = true)
+  public void setRetryDelay(@Named("NYCT.retryDelay") int retryDelay) {
+    _retryDelay = retryDelay;
   }
 
   @Inject
@@ -176,8 +183,9 @@ public class ProxyProvider {
            message = FeedMessage.parseFrom(streamContent, _extensionRegistry);
            if (!message.getEntityList().isEmpty())
             break;
+           Thread.sleep(_retryDelay * 1000);
           }
-        } catch (IOException e) {
+        } catch (Exception e) {
           _log.error("Error parsing protocol buffer for feed={}. try={}, retry={}. Error={}",
                   feedId, tries, tries < _nTries, e.getMessage());
         }
