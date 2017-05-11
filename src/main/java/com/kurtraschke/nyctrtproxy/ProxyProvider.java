@@ -174,7 +174,8 @@ public class ProxyProvider {
           CloseableHttpResponse response = _httpClient.execute(get);
           try (InputStream streamContent = response.getEntity().getContent()) {
            message = FeedMessage.parseFrom(streamContent, _extensionRegistry);
-           break;
+           if (!message.getEntityList().isEmpty())
+            break;
           }
         } catch (IOException e) {
           _log.error("Error parsing protocol buffer for feed={}. try={}, retry={}. Error={}",
