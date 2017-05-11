@@ -82,6 +82,12 @@ public class SanityTest extends RtTestRunner {
     test(11, "11_2017-03-23_00:33.pb", 5, 0);
   }
 
+  // Test 5X -> 5 rewriting
+  @Test
+  public void test1_peak() throws Exception {
+    test(1, "1_peak_sample.pb", 258, 30);
+  }
+
   private void test(int feedId, String protobuf, int nScheduledExpected, int nAddedExpected) throws Exception {
     FeedMessage msg = readFeedMessage(protobuf);
     List<TripUpdate> updates = _processor.processFeed(feedId, msg);
@@ -113,8 +119,6 @@ public class SanityTest extends RtTestRunner {
     // if improved:
     if (nScheduled != nScheduledExpected || nAdded != nAddedExpected) {
       _log.info("Better than expected, could update test.");
-      if (feedId != 21) // feed 21 includes merged trips
-        assertEquals("total num of RT trips changed",  nScheduledExpected + nAddedExpected, nRt);
     }
   }
 

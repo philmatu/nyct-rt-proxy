@@ -35,7 +35,8 @@ The following parameters are defaults, but can be overridden by adding to `confi
     NYCT.gtfsAgency=MTASBWY # if running with buses, override the agency/feed ids by modifying the input gtfs agency_id and adding this option.  Default MTA NYCT
     NYCT.feedIds=["1", "2", "11", "16", "21"]
     NYCT.routeBlacklistByFeed={"1": ["D", "N", "Q"]}
-    NYCT.realtimeToStaticRouteMapByFeed={"1": {"S": "GS"}}
+    NYCT.realtimeToStaticRouteMapByFeed={"1": {"S": "GS", "5X": "5"}}
+    NYCT.addToTripReplacementPeriodByRoute={"6": "6X"}
     NYCT.latencyLimit=300  # ignore feed if its timestamp is more than 300s in the past
     NYCT.lateTripLimitSec=3600 # match RT trip to static trip with scheduled departure up to 3600s before RT trip
     NYCT.refreshRate=60

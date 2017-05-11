@@ -55,7 +55,10 @@ public class TripUpdateProcessor {
 
   private Map<Integer, Set<String>> _routeBlacklistByFeed = ImmutableMap.of(1, ImmutableSet.of("D", "N", "Q"));
 
-  private Map<Integer, Map<String, String>> _realtimeToStaticRouteMapByFeed = ImmutableMap.of(1, ImmutableMap.of("S", "GS"));
+  private Map<Integer, Map<String, String>> _realtimeToStaticRouteMapByFeed = ImmutableMap.of(1,
+          ImmutableMap.of("S", "GS", "5X", "5"));
+
+  private Map<String, String> _addToTripReplacementPeriodByRoute = ImmutableMap.of("6", "6X");
 
   private int _latencyLimit = 300;
 
@@ -79,6 +82,12 @@ public class TripUpdateProcessor {
   public void setRealtimeToStaticRouteMapByFeed(@Named("NYCT.realtimeToStaticRouteMapByFeed") String json) {
     Type type = new TypeToken<Map<Integer, Map<String, String>>>(){}.getType();
     _realtimeToStaticRouteMapByFeed = new Gson().fromJson(json, type);
+  }
+
+  @Inject(optional = true)
+  public void setAddToTripReplacementPeriodByRoute(@Named("NYCT.addToTripReplacementPeriodByRoute") String json) {
+    Type type = new TypeToken<Map<String, String>>(){}.getType();
+    _addToTripReplacementPeriodByRoute = new Gson().fromJson(json, type);
   }
 
   @Inject(optional = true)
@@ -140,6 +149,12 @@ public class TripUpdateProcessor {
       Set<String> routeIds = Arrays.stream(trp.getRouteId().split(", ?"))
               .map(routeId -> realtimeToStaticRouteMap.getOrDefault(routeId, routeId))
               .collect(Collectors.toSet());
+
+      for (String routeId : routeIds) {
+        String newRouteId = _addToTripReplacementPeriodByRoute.get(routeId);
+        if (newRouteId != null)
+          routeIds.add(newRouteId);
+      }
 
       // Kurt's trip matching algorithm (ActivatedTripMatcher) requires calculating currently-active static trips at this point.
       _tripMatcher.initForFeed(start, end, routeIds);
