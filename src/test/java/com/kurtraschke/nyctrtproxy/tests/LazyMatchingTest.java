@@ -36,9 +36,6 @@ import static com.kurtraschke.nyctrtproxy.util.NycRealtimeUtil.*;
 
 public abstract class LazyMatchingTest extends RtTestRunner {
 
-  // copy from ProxyProvider
-  private static final Set<String> routesNeedingFixup = ImmutableSet.of("SI", "N", "Q", "R", "W", "B", "D");
-
   @Inject
   private LazyTripMatcher ltm;
 
@@ -72,7 +69,7 @@ public abstract class LazyMatchingTest extends RtTestRunner {
                 .collect(Collectors.toList());
 
         TimeRange range = trp.getReplacementPeriod();
-        Date start = range.hasStart() ? new Date(range.getStart() * 1000) : earliestTripStart(routesNeedingFixup, updates);
+        Date start = range.hasStart() ? new Date(range.getStart() * 1000) : earliestTripStart(updates);
         Date end = range.hasEnd() ? new Date(range.getEnd() * 1000) : new Date(msg.getHeader().getTimestamp() * 1000);
 
         atm.initForFeed(start, end, Collections.singleton(routeId));
@@ -83,13 +80,20 @@ public abstract class LazyMatchingTest extends RtTestRunner {
           TripUpdate.Builder tub = TripUpdate.newBuilder(tu);
 
           TripDescriptor.Builder tb = tub.getTripBuilder();
-          NyctTripId rtid = NyctTripId.buildFromString(tb.getTripId());
-          if (routesNeedingFixup.contains(routeId)) {
-            tb.setStartDate(fixedStartDate(tb));
+          NyctTripId rtid = NyctTripId.buildFromTripDescriptor(tb);
+
+          if (rtid != null) {
             tub.getStopTimeUpdateBuilderList().forEach(stub -> {
-              stub.setStopId(stub.getStopId() + rtid.getDirection());
+              if (!(stub.getStopId().endsWith("N") || stub.getStopId().endsWith("S"))) {
+                stub.setStopId(stub.getStopId() + rtid.getDirection());
+              }
             });
+
             tb.setTripId(rtid.toString());
+          }
+
+          if (tb.getStartDate().length() > 8) {
+            tb.setStartDate(fixedStartDate(tb));
           }
 
           TripMatchResult result = ltm.match(tub, rtid, timestamp);

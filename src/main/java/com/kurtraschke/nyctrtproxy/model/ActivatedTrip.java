@@ -36,7 +36,7 @@ public class ActivatedTrip {
   public ActivatedTrip(ServiceDate sd, Trip theTrip, List<StopTime> stopTimes) {
     this.sd = sd;
     this.theTrip = theTrip;
-    this.parsedTripId = NyctTripId.buildFromString(theTrip.getId().getId());
+    this.parsedTripId = NyctTripId.buildFromTrip(theTrip);
     this.stopTimes = stopTimes;
   }
 

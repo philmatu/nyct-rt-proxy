@@ -55,9 +55,10 @@ public class TripUpdateProcessor {
 
   private Map<Integer, Set<String>> _routeBlacklistByFeed = ImmutableMap.of(1, ImmutableSet.of("D", "N", "Q"));
 
-  private Set<String> _routesNeedingFixup = ImmutableSet.of("SI", "N", "Q", "R", "W", "B", "D");
+  private Map<Integer, Map<String, String>> _realtimeToStaticRouteMapByFeed = ImmutableMap.of(1,
+          ImmutableMap.of("S", "GS", "5X", "5"));
 
-  private Map<Integer, Map<String, String>> _realtimeToStaticRouteMapByFeed = ImmutableMap.of(1, ImmutableMap.of("S", "GS"));
+  private Map<String, String> _addToTripReplacementPeriodByRoute = ImmutableMap.of("6", "6X");
 
   private int _latencyLimit = 300;
 
@@ -78,15 +79,15 @@ public class TripUpdateProcessor {
   }
 
   @Inject(optional = true)
-  public void setRoutesNeedingFixup(@Named("NYCT.routesNeedingFixup") String json) {
-    Type type = new TypeToken<Set<String>>(){}.getType();
-    _routesNeedingFixup = new Gson().fromJson(json, type);
-  }
-
-  @Inject(optional = true)
   public void setRealtimeToStaticRouteMapByFeed(@Named("NYCT.realtimeToStaticRouteMapByFeed") String json) {
     Type type = new TypeToken<Map<Integer, Map<String, String>>>(){}.getType();
     _realtimeToStaticRouteMapByFeed = new Gson().fromJson(json, type);
+  }
+
+  @Inject(optional = true)
+  public void setAddToTripReplacementPeriodByRoute(@Named("NYCT.addToTripReplacementPeriodByRoute") String json) {
+    Type type = new TypeToken<Map<String, String>>(){}.getType();
+    _addToTripReplacementPeriodByRoute = new Gson().fromJson(json, type);
   }
 
   @Inject(optional = true)
@@ -141,13 +142,19 @@ public class TripUpdateProcessor {
         continue;
       GtfsRealtime.TimeRange range = trp.getReplacementPeriod();
 
-      Date start = range.hasStart() ? new Date(range.getStart() * 1000) : earliestTripStart(_routesNeedingFixup, tripUpdatesByRoute.values());
+      Date start = range.hasStart() ? new Date(range.getStart() * 1000) : earliestTripStart(tripUpdatesByRoute.values());
       Date end = range.hasEnd() ? new Date(range.getEnd() * 1000) : new Date(fm.getHeader().getTimestamp() * 1000);
 
       // All route IDs in this trip replacement period
       Set<String> routeIds = Arrays.stream(trp.getRouteId().split(", ?"))
               .map(routeId -> realtimeToStaticRouteMap.getOrDefault(routeId, routeId))
               .collect(Collectors.toSet());
+
+      for (String routeId : routeIds) {
+        String newRouteId = _addToTripReplacementPeriodByRoute.get(routeId);
+        if (newRouteId != null)
+          routeIds.add(newRouteId);
+      }
 
       // Kurt's trip matching algorithm (ActivatedTripMatcher) requires calculating currently-active static trips at this point.
       _tripMatcher.initForFeed(start, end, routeIds);
@@ -166,17 +173,27 @@ public class TripUpdateProcessor {
           tb.setRouteId(realtimeToStaticRouteMap.getOrDefault(tb.getRouteId(), tb.getRouteId()));
 
           // get ID which consists of route, direction, origin-departure time, possibly a path identifier (for feed 1.)
-          NyctTripId rtid = NyctTripId.buildFromString(tb.getTripId());
+          NyctTripId rtid = NyctTripId.buildFromTripDescriptor(tb);
 
-          // Some routes have start date set incorrectly and stop IDs that don't include the direction.
-          if (_routesNeedingFixup.contains(tb.getRouteId()) && rtid != null) {
-            tb.setStartDate(fixedStartDate(tb));
+          // If we were able to parse the trip ID, there are various fixes
+          // we may need to apply.
+          if (rtid != null) {
 
+            // Fix stop IDs which don't include direction
             tub.getStopTimeUpdateBuilderList().forEach(stub -> {
-              stub.setStopId(stub.getStopId() + rtid.getDirection());
+              if (!(stub.getStopId().endsWith("N") || stub.getStopId().endsWith("S"))) {
+                stub.setStopId(stub.getStopId() + rtid.getDirection());
+              }
             });
 
+            // Re-set the trip ID to the parsed trip ID; coerces IDs to a uniform format.
+            // If the trip is matched, the ID will be rewritten again to the corresponding static trip ID below.
             tb.setTripId(rtid.toString());
+          }
+
+          // Some routes have start date set incorrectly
+          if (tb.getStartDate().length() > 8) {
+            tb.setStartDate(fixedStartDate(tb));
           }
 
           TripMatchResult result = _tripMatcher.match(tub, rtid, fm.getHeader().getTimestamp());
@@ -216,8 +233,8 @@ public class TripUpdateProcessor {
 
         if (_listener != null)
           _listener.reportMatchesForRoute(routeId, routeMetrics);
+        }
       }
-    }
 
     if (_listener != null)
       _listener.reportMatchesForFeed(feedId.toString(), feedMetrics);
@@ -262,8 +279,8 @@ public class TripUpdateProcessor {
   }
 
   private TripMatchResult mergedResult(TripMatchResult first, TripMatchResult second) {
-    NyctTripId firstId = NyctTripId.buildFromString(first.getTripUpdate().getTrip().getTripId());
-    NyctTripId secondId = NyctTripId.buildFromString(second.getTripUpdate().getTrip().getTripId());
+    NyctTripId firstId = NyctTripId.buildFromTripDescriptor(first.getTripUpdate().getTrip());
+    NyctTripId secondId = NyctTripId.buildFromTripDescriptor(second.getTripUpdate().getTrip());
     if (firstId.getOriginDepartureTime() > secondId.getOriginDepartureTime())
       return mergedResult(second, first);
 

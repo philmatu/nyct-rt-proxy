@@ -15,6 +15,7 @@
  */
 package com.kurtraschke.nyctrtproxy.model;
 
+import com.google.transit.realtime.GtfsRealtime;
 import org.apache.commons.lang3.StringUtils;
 import org.onebusaway.gtfs.model.Trip;
 
@@ -63,7 +64,7 @@ public class NyctTripId {
    * @param tripId the trip ID
    * @return parsed trip ID
    */
-  public static NyctTripId buildFromString(String tripId) {
+  private static NyctTripId buildFromString(String tripId) {
     int originDepartureTime;
     String pathId, routeId, directionId, networkId;
 
@@ -98,6 +99,21 @@ public class NyctTripId {
   public static NyctTripId buildFromTrip(Trip trip) {
     NyctTripId id = buildFromString(trip.getId().getId());
     id.routeId = trip.getRoute().getId().getId();
+    return id;
+  }
+
+  /**
+   * Build a NyctTripId from a TripDescriptor
+   *
+   * This is necessary because route 6X realtime trip IDs have "6" in the typical 'route' position.
+   *
+   * @param td GTFS-RT TripDescriptor
+   * @return parsed trip ID
+   */
+  public static NyctTripId buildFromTripDescriptor(GtfsRealtime.TripDescriptorOrBuilder td) {
+    NyctTripId id = buildFromString(td.getTripId());
+    if (td.hasRouteId())
+      id.routeId = td.getRouteId();
     return id;
   }
 

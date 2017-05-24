@@ -71,10 +71,21 @@ public class SanityTest extends RtTestRunner {
     test(21, "21_2017-03-13.pb", 29, 25);
   }
 
+  @Test
+  public void test21_2017_04_20() throws Exception {
+    test(21, "21_2017-04-20.pb", 43, 1);
+  }
+
   // Test overnight service
   @Test
   public void test11_midnight() throws Exception {
     test(11, "11_2017-03-23_00:33.pb", 5, 0);
+  }
+
+  // Test 5X -> 5 rewriting
+  @Test
+  public void test1_peak() throws Exception {
+    test(1, "1_peak_sample.pb", 280, 8);
   }
 
   private void test(int feedId, String protobuf, int nScheduledExpected, int nAddedExpected) throws Exception {
@@ -108,8 +119,6 @@ public class SanityTest extends RtTestRunner {
     // if improved:
     if (nScheduled != nScheduledExpected || nAdded != nAddedExpected) {
       _log.info("Better than expected, could update test.");
-      if (feedId != 21) // feed 21 includes merged trips
-        assertEquals("total num of RT trips changed",  nScheduledExpected + nAddedExpected, nRt);
     }
   }
 
