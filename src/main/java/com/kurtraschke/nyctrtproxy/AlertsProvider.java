@@ -57,7 +57,7 @@ public class AlertsProvider {
 
   private GtfsRealtimeSink _alertsSink;
 
-  private String _serviceAlertsUrl = "http://gms.mtanyct.info/GMS/GMSFeedsService/Feeds/ServiceStatusSubway.xml";
+  private String _serviceAlertsUrl = null;
 
   private int _refreshRate = 60;
 
@@ -88,7 +88,7 @@ public class AlertsProvider {
     _refreshRate = refreshRate;
   }
 
-  @Inject(optional = true)
+  @Inject
   public void setServiceAlertsUrl(@Named("NYCT.serviceAlertsUrl") String url) {
     _serviceAlertsUrl = url;
   }
