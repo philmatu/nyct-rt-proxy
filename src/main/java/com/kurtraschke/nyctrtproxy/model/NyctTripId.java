@@ -68,7 +68,7 @@ public class NyctTripId {
     int originDepartureTime;
     String pathId, routeId, directionId, networkId;
 
-    Pattern pat = Pattern.compile("([A-Z0-9]+_)?(?<originDepartureTime>[0-9]{6})_?(?<route>[A-Z0-9]+)\\.+(?<direction>[NS])(?<network>[A-Z0-9]*)$");
+    Pattern pat = Pattern.compile("([A-Z0-9]+_)?(?<originDepartureTime>[0-9-]{6})_?(?<route>[A-Z0-9]+)\\.+(?<direction>[NS])(?<network>[A-Z0-9]*)$");
 
     Matcher matcher = pat.matcher(tripId);
 
