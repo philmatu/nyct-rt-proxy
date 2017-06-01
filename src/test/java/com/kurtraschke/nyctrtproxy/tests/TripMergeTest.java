@@ -19,6 +19,8 @@ import com.google.inject.Inject;
 import com.google.transit.realtime.GtfsRealtime.*;
 import com.kurtraschke.nyctrtproxy.model.NyctTripId;
 import com.kurtraschke.nyctrtproxy.services.TripUpdateProcessor;
+
+import org.junit.Before;
 import org.junit.Test;
 import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.gtfs.model.StopTime;
@@ -40,6 +42,11 @@ public class TripMergeTest extends RtTestRunner {
   @Inject
   private GtfsRelationalDao _dao;
 
+  @Before
+  public void setup(){
+	  updateGTFSFile("/google_transit.zip");
+  }
+  
   @Test
   public void testMerging() throws Exception {
     String protobuf = "21_2017-03-13.pb";

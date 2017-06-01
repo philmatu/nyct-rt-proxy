@@ -23,6 +23,8 @@ import com.kurtraschke.nyctrtproxy.model.NyctTripId;
 import com.kurtraschke.nyctrtproxy.model.TripMatchResult;
 import com.kurtraschke.nyctrtproxy.services.ActivatedTripMatcher;
 import com.kurtraschke.nyctrtproxy.services.LazyTripMatcher;
+
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -45,9 +47,10 @@ public abstract class LazyMatchingTest extends RtTestRunner {
   private String routeId;
   private String filename;
 
-  public LazyMatchingTest(String routeId, String filename) {
+  public LazyMatchingTest(String routeId, String filename, String GTFSFileName) {
     this.routeId = routeId;
     this.filename = filename;
+    updateGTFSFile(GTFSFileName);
   }
 
   public abstract void checkMatchResult(long timestamp, NyctTripId rtid, TripUpdateOrBuilder tripUpdate, TripMatchResult result);

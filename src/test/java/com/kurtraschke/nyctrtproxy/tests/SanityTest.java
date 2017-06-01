@@ -18,6 +18,8 @@ package com.kurtraschke.nyctrtproxy.tests;
 import com.google.inject.Inject;
 import com.google.transit.realtime.GtfsRealtime.*;
 import com.kurtraschke.nyctrtproxy.services.TripUpdateProcessor;
+
+import org.junit.Before;
 import org.junit.Test;
 import org.onebusaway.gtfs.model.Trip;
 import org.onebusaway.gtfs.services.GtfsRelationalDao;
@@ -39,6 +41,11 @@ public class SanityTest extends RtTestRunner {
 
   @Inject
   private GtfsRelationalDao _dao;
+  
+  @Before
+  public void setup(){
+	  updateGTFSFile("/google_transit.zip");
+  }
 
   @Test
   public void test1_2017_03_13() throws Exception {

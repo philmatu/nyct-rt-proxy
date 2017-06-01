@@ -22,9 +22,11 @@ import com.kurtraschke.nyctrtproxy.model.TripMatchResult;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import org.junit.Before;
+
 public class TripCoercionMatchingTest extends LazyMatchingTest {
   public TripCoercionMatchingTest() {
-    super("SI", "11_2017-03-21.pb");
+    super("SI", "11_2017-03-21.pb", "/google_transit.zip");
   }
 
   // This test is from hand-matching GTFS to RT.

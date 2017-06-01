@@ -54,6 +54,8 @@ public abstract class RtTestRunner {
   protected static String _agencyId = "MTA NYCT";
 
   private static Injector _injector;
+  
+  private static String loadedFile = "";
 
   static {
     _injector = Guice.createInjector(getTestModule());
@@ -63,6 +65,22 @@ public abstract class RtTestRunner {
     _extensionRegistry.add(GtfsRealtimeNYCT.nyctFeedHeader);
     _extensionRegistry.add(GtfsRealtimeNYCT.nyctTripDescriptor);
     _extensionRegistry.add(GtfsRealtimeNYCT.nyctStopTimeUpdate);
+  }
+  
+  @Inject
+  private GtfsRelationalDaoProvider _daoProvider;
+  
+  public void updateGTFSFile(String file){
+	  if(_dao != null){
+		  if(file.equals(loadedFile)){
+			  return;//no need to update
+		  }
+		  
+		  System.out.println("Updating GTFS Dao to file "+file);
+		  _daoProvider.setGtfsPath(new File(TestCase.class.getResource(file).getFile()));
+		  _daoProvider.get();
+		  loadedFile = file;
+	  }
   }
 
   @Before
@@ -91,6 +109,8 @@ public abstract class RtTestRunner {
         bind(File.class)
                 .annotatedWith(Names.named("NYCT.gtfsPath"))
                 .toInstance(new File(TestCase.class.getResource("/google_transit.zip").getFile()));
+        
+        loadedFile = "/google_transit.zip";
 
         bind(GtfsRelationalDao.class)
                 .toProvider(GtfsRelationalDaoProvider.class)

@@ -27,7 +27,7 @@ import static org.junit.Assert.assertTrue;
 
 public class LazyMatchingTestCompareActivated extends LazyMatchingTest {
   public LazyMatchingTestCompareActivated() {
-    super("SI", "11_2017-03-13.pb");
+    super("SI", "11_2017-03-13.pb", "/google_transit.zip");
   }
 
   @Inject
